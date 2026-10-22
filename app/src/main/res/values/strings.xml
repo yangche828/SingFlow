@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SingFlow</string>
+    <string name="notification_channel_vpn">SingFlow 连接状态</string>
+    <string name="notification_channel_vpn_desc">显示 SingFlow VPN 隧道的前台运行状态</string>
+    <string name="notification_title_connected">SingFlow 已保护</string>
+    <string name="notification_title_connecting">SingFlow 正在连接</string>
+    <string name="notification_stop">断开</string>
+    <string name="notification_action_stop">停止</string>
+</resources>

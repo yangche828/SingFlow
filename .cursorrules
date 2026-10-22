@@ -1,0 +1,36 @@
+# SingFlow — Cursor / Windsurf Rules
+
+## 项目
+
+Android VPN 客户端，包名 `com.singflow.android`，Android 13 (API 33) ~ Android 17 (API 37)。
+技术栈：Kotlin 2.0.21 / AGP 8.7.2 / Compose Material 3 / Hilt / Room / DataStore / kotlinx.serialization / OkHttp。
+
+## 硬性兼容规则
+
+- minSdk 33；compileSdk / targetSdk 动态探测本机最高平台。
+- `packaging.jniLibs.useLegacyPackaging = false`（16KB Page Size）。
+- `SingFlowVpnService` 必须 `foregroundServiceType="systemExempted|specialUse"`，并使用 `ServiceCompat.startForeground` 显式传入 `FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED`。
+- `enableEdgeToEdge()`；禁止 `screenOrientation` 锁定；Compose 使用 `Scaffold` + safeDrawing insets。
+- 动态广播必须 `ContextCompat.registerReceiver(..., RECEIVER_NOT_EXPORTED)`。
+- VPN 必须 `addDisallowedApplication(packageName)` + `protect(fd)` 防回环。
+
+## sing-box 1.14+ 禁止项
+
+- 禁止 `dns.servers[].address`，必须强类型 `type`。
+- 禁止 `outbound: "any"` / `domain_strategy`。
+- 禁止 `block` / `dns` outbound。
+- 禁止 inbound `sniff`，必须 `route.rules[0] = {"action":"sniff","timeout":"300ms"}`。
+- 禁止 `inet4_address`，必须 `address` 数组。
+- 禁止 `store_rdrc`，使用 `store_dns`；禁止内联 `geoip: "cn"`，使用 `.srs` rule_set。
+
+## 代码规则
+
+- 零 `TODO`、零占位符、零省略。
+- 解析器只用 `java.util.Base64`，保证 JVM 单测可运行。
+- 新协议：实现 `NodeLinkParser` 并注册到 `UniversalImportManager.defaultParsers()`。
+- 新配置能力：实现 `ConfigInterceptor` 并注册到 `SingBoxConfigPipeline.defaultInterceptors()`。
+- 网络/IO 使用 `Dispatchers.IO`；Compose 用 `collectAsStateWithLifecycle()`。
+
+## 自检
+
+`./gradlew :app:testDebugUnitTest :app:assembleDebug`，并执行 `scripts/e2e_adb_verify.sh`。

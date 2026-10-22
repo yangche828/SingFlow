@@ -1,0 +1,15 @@
+# 统一换行：仓库内文本用 LF，避免 shell 脚本在 Linux/CI 上被 CRLF 破坏
+* text=auto
+*.sh text eol=lf
+gradlew text eol=lf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# 二进制（禁止换行转换）
+*.png binary
+*.jpg binary
+*.aar binary
+*.apk binary
+*.jar binary
+*.srs binary
+*.so binary

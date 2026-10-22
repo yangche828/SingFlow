@@ -1,0 +1,149 @@
+# SingFlow · 云端构建 16 KB 对齐的 libbox.aar
+#
+# 背景：sing-box 官方 Release 不提供 libbox.aar，只能用官方构建器
+# `cmd/internal/build_libbox` 自行产出。本工作流在 GitHub 托管的
+# Ubuntu runner 上完成：Go 1.25.5 + JDK 17 + NDK r28 + gomobile。
+#
+# 用法：Actions → Build libbox.aar → Run workflow，参数保持默认即可。
+name: Build libbox.aar
+
+on:
+  workflow_dispatch:
+    inputs:
+      singbox_ref:
+        description: sing-box 版本 tag（需与 SingFlow 配置语法对齐，勿随意改）
+        required: true
+        default: v1.14.3
+      gomobile_target:
+        description: gomobile -target；默认全 ABI。想快可填 android/arm64,android/amd64
+        required: true
+        default: android
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build libbox.aar
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      SINGBOX_REF: ${{ inputs.singbox_ref }}
+      GOMOBILE_TARGET: ${{ inputs.gomobile_target }}
+      NDK_VERSION: 28.0.13004108
+    steps:
+      - name: 检出 sing-box 源码
+        uses: actions/checkout@v4
+        with:
+          repository: SagerNet/sing-box
+          ref: ${{ inputs.singbox_ref }}
+          path: sing-box
+          fetch-depth: 1
+
+      - name: 补全版本 tag（构建器用 git describe 注入版本号）
+        working-directory: sing-box
+        run: |
+          git fetch --depth=1 origin "refs/tags/${SINGBOX_REF}:refs/tags/${SINGBOX_REF}" || true
+          git describe --tags || echo "no tag, version will be 'unknown'"
+
+      - name: 安装 Go 1.25.5
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.5"
+          cache: true
+          cache-dependency-path: sing-box/go.sum
+
+      - name: 安装 JDK 17（构建脚本硬性校验 openjdk 17）
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: 检查 runner 自带 Android SDK
+        run: |
+          echo "ANDROID_HOME=${ANDROID_HOME}"
+          echo "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT}"
+          ls "${ANDROID_HOME}/cmdline-tools" || true
+          ls "${ANDROID_HOME}/licenses" || true
+          SDKMANAGER="$(ls -d "${ANDROID_HOME}"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | head -n1)"
+          echo "sdkmanager=${SDKMANAGER}"
+          test -x "${SDKMANAGER}"
+
+      # 注意：不要用 android-actions/setup-android@v3，它默认安装已下线的 `tools` 包，
+      # 在新版 runner 上会直接以 exit code 1 失败。GitHub 的 ubuntu runner 已预装
+      # cmdline-tools 与 licenses，这里直接调用原生 sdkmanager 即可。
+      - name: 安装 NDK r28（16 KB 页对齐的默认基线）
+        run: |
+          set -uo pipefail
+          SDKMANAGER="$(ls -d "${ANDROID_HOME}"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | head -n1)"
+          (yes | "${SDKMANAGER}" --licenses > /dev/null) || true
+          NDK_DIR=""
+          for v in "${NDK_VERSION}" 28.2.13676358 28.1.13356709; do
+            if "${SDKMANAGER}" "ndk;${v}"; then
+              NDK_DIR="${ANDROID_HOME}/ndk/${v}"
+              break
+            fi
+          done
+          if [ -z "${NDK_DIR}" ]; then
+            NDK_DIR="$(ls -d "${ANDROID_HOME}"/ndk/* 2>/dev/null | sort -V | tail -n1)"
+          fi
+          if [ -z "${NDK_DIR}" ] || [ ! -d "${NDK_DIR}" ]; then
+            echo "::error::NDK 安装失败"
+            exit 1
+          fi
+          echo "using NDK: ${NDK_DIR}"
+          cat "${NDK_DIR}/source.properties"
+          echo "ANDROID_NDK_HOME=${NDK_DIR}" >> "$GITHUB_ENV"
+          echo "${NDK_DIR}/toolchains/llvm/prebuilt/linux-x86_64/bin" >> "$GITHUB_PATH"
+
+      - name: 安装 gomobile / gobind
+        run: |
+          go install github.com/sagernet/gomobile/cmd/gomobile@v0.1.13
+          go install github.com/sagernet/gomobile/cmd/gobind@v0.1.13
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: 编译 libbox.aar
+        working-directory: sing-box
+        run: |
+          go run ./cmd/internal/build_libbox -target android -platform "${GOMOBILE_TARGET}"
+          ls -lh libbox.aar libbox-legacy.aar
+
+      - name: 校验 16 KB 页对齐
+        working-directory: sing-box
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/aar && mkdir -p /tmp/aar
+          unzip -q libbox.aar -d /tmp/aar
+          READELF="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf"
+          fail=0
+          while IFS= read -r so; do
+            echo "== ${so}"
+            "${READELF}" -lW "${so}" | awk '/LOAD/ {print}'
+            case "${so}" in
+              *arm64-v8a*|*x86_64*)
+                if ! "${READELF}" -lW "${so}" | awk '/LOAD/ {print $NF}' | grep -qx '0x4000'; then
+                  echo "::error::${so} 的 LOAD 段未按 16 KB 对齐"
+                  fail=1
+                fi
+                ;;
+            esac
+          done < <(find /tmp/aar -name '*.so')
+          exit "${fail}"
+
+      - name: 输出 AAR 摘要
+        working-directory: sing-box
+        run: |
+          echo "### libbox.aar" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          unzip -l libbox.aar | tail -n 20 >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 上传产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: libbox-${{ inputs.singbox_ref }}
+          path: |
+            sing-box/libbox.aar
+            sing-box/libbox-legacy.aar
+          if-no-files-found: error
+          retention-days: 7

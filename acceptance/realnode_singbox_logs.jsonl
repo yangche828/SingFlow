@@ -1,0 +1,189 @@
+{"type":"info","payload":"[3295999634 22ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[827032300 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[3102069667 0ms] inbound/tun[tun-in]: inbound connection from 172.19.0.1:37104"}
+{"type":"info","payload":"[3102069667 0ms] inbound/tun[tun-in]: inbound connection to 142.250.157.84:443"}
+{"type":"info","payload":"[3102069667 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[3102069667 11ms] outbound/vless[proxy]: outbound connection to 142.250.157.84:443"}
+{"type":"info","payload":"[2583302532 2ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[3295076589 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[4077931573 0ms] inbound/tun[tun-in]: inbound packet connection from 172.19.0.1:53827"}
+{"type":"info","payload":"[4077931573 0ms] inbound/tun[tun-in]: inbound packet connection to 142.250.157.84:443"}
+{"type":"info","payload":"[4077931573 1ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[4077931573 6ms] outbound/vless[proxy]: outbound packet connection to 142.250.157.84:443"}
+{"type":"info","payload":"[4077931573 6ms] outbound/vless[proxy]: outbound packet connection to 142.250.157.84:443"}
+{"type":"info","payload":"[104786050 2ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[590162115 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[601995909 0ms] inbound/tun[tun-in]: inbound connection from 172.19.0.1:37112"}
+{"type":"info","payload":"[601995909 0ms] inbound/tun[tun-in]: inbound connection to 142.250.157.84:443"}
+{"type":"info","payload":"[601995909 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[601995909 6ms] outbound/vless[proxy]: outbound connection to 142.250.157.84:443"}
+{"type":"info","payload":"[3547283678 2ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[2824401461 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[3793260824 0ms] inbound/tun[tun-in]: inbound connection from 172.19.0.1:52700"}
+{"type":"info","payload":"[3793260824 1ms] inbound/tun[tun-in]: inbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[3793260824 2ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[3793260824 9ms] outbound/vless[proxy]: outbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[2230893075 12ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[4136625647 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[2411819366 0ms] inbound/tun[tun-in]: inbound connection from 172.19.0.1:52714"}
+{"type":"info","payload":"[2411819366 0ms] inbound/tun[tun-in]: inbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[2411819366 2ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[2411819366 13ms] outbound/vless[proxy]: outbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[3102069667 711ms] outbound/vless[proxy]: outbound connection to 142.250.157.84:443"}
+{"type":"info","payload":"[601995909 750ms] outbound/vless[proxy]: outbound connection to 142.250.157.84:443"}
+{"type":"info","payload":"[2411819366 696ms] outbound/vless[proxy]: outbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[3793260824 815ms] outbound/vless[proxy]: outbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[977532315 6ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[589843629 0ms] inbound/tun[tun-in]: inbound packet connection from 172.19.0.1:53827"}
+{"type":"info","payload":"[589843629 0ms] inbound/tun[tun-in]: inbound packet connection to 142.250.157.84:443"}
+{"type":"info","payload":"[589843629 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[589843629 306ms] outbound/vless[proxy]: outbound packet connection to 142.250.157.84:443"}
+{"type":"info","payload":"[589843629 306ms] outbound/vless[proxy]: outbound packet connection to 142.250.157.84:443"}
+{"type":"info","payload":"[1383840716 6ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[2410725941 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[3995485446 0ms] inbound/tun[tun-in]: inbound connection from 172.19.0.1:52716"}
+{"type":"info","payload":"[3995485446 0ms] inbound/tun[tun-in]: inbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[3995485446 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[3323909926 24ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[3871356903 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[3613711950 0ms] inbound/tun[tun-in]: inbound connection from 172.19.0.1:52728"}
+{"type":"info","payload":"[3613711950 0ms] inbound/tun[tun-in]: inbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[3613711950 4ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[3613711950 32ms] outbound/vless[proxy]: outbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[3995485446 56ms] outbound/vless[proxy]: outbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[3995485446 839ms] outbound/vless[proxy]: outbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[3613711950 823ms] outbound/vless[proxy]: outbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[3203043068 0ms] inbound/tun[tun-in]: inbound packet connection from 172.19.0.1:53827"}
+{"type":"info","payload":"[3203043068 0ms] inbound/tun[tun-in]: inbound packet connection to 142.250.157.84:443"}
+{"type":"info","payload":"[3203043068 302ms] outbound/vless[proxy]: outbound packet connection to 142.250.157.84:443"}
+{"type":"info","payload":"[3203043068 302ms] outbound/vless[proxy]: outbound packet connection to 142.250.157.84:443"}
+{"type":"info","payload":"[421220503 1ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[2375279716 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[3205370654 0ms] inbound/tun[tun-in]: inbound connection from 172.19.0.1:52732"}
+{"type":"info","payload":"[3205370654 0ms] inbound/tun[tun-in]: inbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[3205370654 1ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[3205370654 5ms] outbound/vless[proxy]: outbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[2892506184 1ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[1460545984 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[1371957128 0ms] inbound/tun[tun-in]: inbound connection from 172.19.0.1:52748"}
+{"type":"info","payload":"[1371957128 0ms] inbound/tun[tun-in]: inbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[1371957128 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[1371957128 3ms] outbound/vless[proxy]: outbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[833919681 2ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[424686882 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[222230218 0ms] inbound/tun[tun-in]: inbound packet connection from 172.19.0.1:55957"}
+{"type":"info","payload":"[222230218 0ms] inbound/tun[tun-in]: inbound packet connection to 142.250.157.84:443"}
+{"type":"info","payload":"[222230218 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[222230218 0ms] outbound/vless[proxy]: outbound packet connection to 142.250.157.84:443"}
+{"type":"info","payload":"[222230218 0ms] outbound/vless[proxy]: outbound packet connection to 142.250.157.84:443"}
+{"type":"info","payload":"[4239397692 1ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[3673686733 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[2028633963 0ms] inbound/tun[tun-in]: inbound connection from 172.19.0.1:49304"}
+{"type":"info","payload":"[2028633963 0ms] inbound/tun[tun-in]: inbound connection to 142.250.157.84:443"}
+{"type":"info","payload":"[2028633963 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[2028633963 3ms] outbound/vless[proxy]: outbound connection to 142.250.157.84:443"}
+{"type":"info","payload":"[3205370654 788ms] outbound/vless[proxy]: outbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[1371957128 755ms] outbound/vless[proxy]: outbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[2028633963 708ms] outbound/vless[proxy]: outbound connection to 142.250.157.84:443"}
+{"type":"info","payload":"[254276096 1ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[2090468819 0ms] inbound/tun[tun-in]: inbound packet connection from 172.19.0.1:55957"}
+{"type":"info","payload":"[2090468819 0ms] inbound/tun[tun-in]: inbound packet connection to 142.250.157.84:443"}
+{"type":"info","payload":"[2090468819 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[2090468819 302ms] outbound/vless[proxy]: outbound packet connection to 142.250.157.84:443"}
+{"type":"info","payload":"[2090468819 302ms] outbound/vless[proxy]: outbound packet connection to 142.250.157.84:443"}
+{"type":"info","payload":"[2825552792 1ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[3089926248 0ms] inbound/tun[tun-in]: inbound packet connection from 172.19.0.1:55957"}
+{"type":"info","payload":"[3089926248 0ms] inbound/tun[tun-in]: inbound packet connection to 142.250.157.84:443"}
+{"type":"info","payload":"[3089926248 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[3089926248 302ms] outbound/vless[proxy]: outbound packet connection to 142.250.157.84:443"}
+{"type":"info","payload":"[3089926248 302ms] outbound/vless[proxy]: outbound packet connection to 142.250.157.84:443"}
+{"type":"info","payload":"[1442728864 3ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[1104337298 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[1613282137 0ms] inbound/tun[tun-in]: inbound connection from 172.19.0.1:45254"}
+{"type":"info","payload":"[1613282137 0ms] inbound/tun[tun-in]: inbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[1613282137 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[1613282137 5ms] outbound/vless[proxy]: outbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[568215240 4ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[2486276116 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[1611458186 0ms] inbound/tun[tun-in]: inbound connection from 172.19.0.1:45266"}
+{"type":"info","payload":"[1611458186 0ms] inbound/tun[tun-in]: inbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[1611458186 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[1611458186 3ms] outbound/vless[proxy]: outbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[1613282137 703ms] outbound/vless[proxy]: outbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[1611458186 739ms] outbound/vless[proxy]: outbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[474470862 0ms] inbound/tun[tun-in]: inbound packet connection from 172.19.0.1:55957"}
+{"type":"info","payload":"[474470862 0ms] inbound/tun[tun-in]: inbound packet connection to 142.250.157.84:443"}
+{"type":"info","payload":"[474470862 302ms] outbound/vless[proxy]: outbound packet connection to 142.250.157.84:443"}
+{"type":"info","payload":"[474470862 302ms] outbound/vless[proxy]: outbound packet connection to 142.250.157.84:443"}
+{"type":"info","payload":"[1533705758 4ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[1181195218 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[2141184400 0ms] inbound/tun[tun-in]: inbound connection from 172.19.0.1:45280"}
+{"type":"info","payload":"[2141184400 0ms] inbound/tun[tun-in]: inbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[2141184400 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[2141184400 3ms] outbound/vless[proxy]: outbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[1120556033 1ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[2458832559 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[3322824796 0ms] inbound/tun[tun-in]: inbound packet connection from 172.19.0.1:54285"}
+{"type":"info","payload":"[3322824796 0ms] inbound/tun[tun-in]: inbound packet connection to 172.217.114.4:443"}
+{"type":"info","payload":"[3322824796 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[3614044431 1ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[230034535 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[2683784762 0ms] inbound/tun[tun-in]: inbound connection from 172.19.0.1:33498"}
+{"type":"info","payload":"[2683784762 0ms] inbound/tun[tun-in]: inbound connection to 172.217.114.4:443"}
+{"type":"info","payload":"[2683784762 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[3322824796 3ms] outbound/vless[proxy]: outbound packet connection to 172.217.114.4:443"}
+{"type":"info","payload":"[3322824796 3ms] outbound/vless[proxy]: outbound packet connection to 172.217.114.4:443"}
+{"type":"info","payload":"[2683784762 4ms] outbound/vless[proxy]: outbound connection to 172.217.114.4:443"}
+{"type":"info","payload":"[630911509 1ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[3764949272 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[3196160030 0ms] inbound/tun[tun-in]: inbound connection from 172.19.0.1:45294"}
+{"type":"info","payload":"[3196160030 0ms] inbound/tun[tun-in]: inbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[3196160030 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[3196160030 2ms] outbound/vless[proxy]: outbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[2141184400 617ms] outbound/vless[proxy]: outbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[2683784762 636ms] outbound/vless[proxy]: outbound connection to 172.217.114.4:443"}
+{"type":"info","payload":"[3196160030 630ms] outbound/vless[proxy]: outbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[1013183362 1ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[3978104437 0ms] inbound/tun[tun-in]: inbound packet connection from 172.19.0.1:54285"}
+{"type":"info","payload":"[3978104437 0ms] inbound/tun[tun-in]: inbound packet connection to 172.217.114.4:443"}
+{"type":"info","payload":"[3978104437 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[3978104437 301ms] outbound/vless[proxy]: outbound packet connection to 172.217.114.4:443"}
+{"type":"info","payload":"[3978104437 301ms] outbound/vless[proxy]: outbound packet connection to 172.217.114.4:443"}
+{"type":"info","payload":"[2056726725 1ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[3881050915 0ms] inbound/tun[tun-in]: inbound packet connection from 172.19.0.1:54285"}
+{"type":"info","payload":"[3881050915 0ms] inbound/tun[tun-in]: inbound packet connection to 172.217.114.4:443"}
+{"type":"info","payload":"[3881050915 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[3881050915 301ms] outbound/vless[proxy]: outbound packet connection to 172.217.114.4:443"}
+{"type":"info","payload":"[3881050915 301ms] outbound/vless[proxy]: outbound packet connection to 172.217.114.4:443"}
+{"type":"info","payload":"[4184086584 0ms] inbound/tun[tun-in]: inbound packet connection from 172.19.0.1:54285"}
+{"type":"info","payload":"[4184086584 0ms] inbound/tun[tun-in]: inbound packet connection to 172.217.114.4:443"}
+{"type":"info","payload":"[4184086584 303ms] outbound/vless[proxy]: outbound packet connection to 172.217.114.4:443"}
+{"type":"info","payload":"[4184086584 303ms] outbound/vless[proxy]: outbound packet connection to 172.217.114.4:443"}
+{"type":"info","payload":"[471038234 4ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[2690424005 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[3851545148 2ms] inbound/tun[tun-in]: inbound connection from 172.19.0.1:44366"}
+{"type":"info","payload":"[3851545148 2ms] inbound/tun[tun-in]: inbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[3851545148 2ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[3851545148 16ms] outbound/vless[proxy]: outbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[2168677211 1ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[3247124034 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[4002261514 0ms] inbound/tun[tun-in]: inbound connection from 172.19.0.1:44376"}
+{"type":"info","payload":"[4002261514 0ms] inbound/tun[tun-in]: inbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[4002261514 1ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[4002261514 5ms] outbound/vless[proxy]: outbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[4002261514 692ms] outbound/vless[proxy]: outbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[3851545148 740ms] outbound/vless[proxy]: outbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[661208742 2ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[1446734803 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[1237168933 0ms] inbound/tun[tun-in]: inbound connection from 172.19.0.1:44380"}
+{"type":"info","payload":"[1237168933 0ms] inbound/tun[tun-in]: inbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[1237168933 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[1237168933 4ms] outbound/vless[proxy]: outbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[2292604601 1ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[645906509 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[3022208944 0ms] inbound/tun[tun-in]: inbound connection from 172.19.0.1:44386"}
+{"type":"info","payload":"[3022208944 0ms] inbound/tun[tun-in]: inbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[3022208944 0ms] router: found package name: com.android.chrome"}
+{"type":"info","payload":"[3022208944 3ms] outbound/vless[proxy]: outbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[1237168933 663ms] outbound/vless[proxy]: outbound connection to 157.240.7.20:443"}
+{"type":"info","payload":"[3022208944 693ms] outbound/vless[proxy]: outbound connection to 157.240.7.20:443"}

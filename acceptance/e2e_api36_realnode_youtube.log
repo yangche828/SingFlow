@@ -1,0 +1,64 @@
+==============================================================
+ SingFlow E2E 验收（Phase 6）
+ 时间: 2026-10-22 08:24:47
+ 设备: emulator-5554  Android 16 (API 36) x86_64
+ adb: D:\Apps\Android\Sdk\platform-tools\adb.exe
+==============================================================
+[PASS] 运行环境满足 minSdk 33 | API 36
+APK: D:\Workspace\Github\SingFlow2\app\build\outputs\apk\debug\app-debug.apk (219.7 MB)
+节点: vless://00000000-0000-0000-0000-000000000000@203.0.113.10:8443?encryption=none&security=tls&sni=node.example.com&fp=chrome&insecure=0&allowInsecure=0&ech=cloudflare-ech.com%2Bhttps%3A%2F%2Fdns.alidns.com%2Fdns-query&type=ws&host=node.example.com&path=%2F#%E4%BA%9A%E6%B4%B2%EF%BC%88Asia-AS%EF%BC%89-%E6%96%B0%E5%8A%A0%E5%9D%A1%EF%BC%88Singapore-SG%EF%BC%89-198.51.100.7
+
+=== 安装与授权 ===
+[WARN] 已跳过安装（-SkipInstall）
+清空应用数据（可用 -KeepData 保留已保存的节点/DNS）
+
+=== 修改远程 DNS（界面自动化） ===
+[WARN] 未找到底部「设置」Tab，跳过 DNS 修改
+
+=== 导入节点并建立隧道 ===
+19: tun0: <POINTOPOINT,UP,LOWER_UP> mtu 9000 qdisc pfifo_fast state UNKNOWN group default qlen 500
+    link/none
+[PASS] tun0 已建立（172.19.0.1/30）
+[PASS] tun0 MTU 已按设置生效 | mtu=9000
+[PASS] 应用进程存活 | pid=3814
+
+=== 内核与系统状态 ===
+[PASS] 无 Java 崩溃（FATAL EXCEPTION）
+[PASS] 无原生崩溃（tombstone）
+节点表: 亚洲（Asia-AS）-新加坡（Singapore-SG）-198.51.100.7|203.0.113.10|8443
+[PASS] 测试节点已入库 | 亚洲（Asia-AS）-新加坡（Singapore-SG）-198.51.100.7
+[PASS] 前台服务 SingFlowVpnService 运行中
+[PASS] 前台服务 isForeground=true
+[PASS] 清单声明前台服务类型含 systemExempted(0x400) | foregroundServiceType=0x40000400
+[PASS] 运行时前台服务类型 systemExempted(0x400)
+[PASS] TUN 已下发 DNS 服务器（客户端 DNS 走隧道） | DnsAddresses=[/1.1.1.1]
+[WARN] 检测到系统 ANR 弹窗（System UI isn't responding），自动点击 Wait 后继续
+[PASS] 界面处于已保护状态（非 TUN 诊断模式） | 已保护
+[PASS] 界面渲染出 SingFlow 应用要素
+
+=== 真实转发（浏览器出网） ===
+已请求浏览器打开: https://www.youtube.com/?singflow=986618
+[PASS] 浏览器渲染出预期页面内容 | 期望文本: 'YouTube'
+[FAIL] 浏览器加载的是本次随机 URL（排除缓存） | 要求包含: singflow=986618
+
+=== 汇总 ===
+[PASS] 运行环境满足 minSdk 33
+[PASS] tun0 已建立（172.19.0.1/30）
+[PASS] tun0 MTU 已按设置生效
+[PASS] 应用进程存活
+[PASS] 无 Java 崩溃（FATAL EXCEPTION）
+[PASS] 无原生崩溃（tombstone）
+[PASS] 测试节点已入库
+[PASS] 前台服务 SingFlowVpnService 运行中
+[PASS] 前台服务 isForeground=true
+[PASS] 清单声明前台服务类型含 systemExempted(0x400)
+[PASS] 运行时前台服务类型 systemExempted(0x400)
+[PASS] TUN 已下发 DNS 服务器（客户端 DNS 走隧道）
+[PASS] 界面处于已保护状态（非 TUN 诊断模式）
+[PASS] 界面渲染出 SingFlow 应用要素
+[PASS] 浏览器渲染出预期页面内容
+[FAIL] 浏览器加载的是本次随机 URL（排除缓存）
+总计 16 项，通过 15 项，失败 1 项
+结果: FAIL
+验收日志已写入: D:\Workspace\Github\SingFlow2\acceptance\e2e_api36_realnode_youtube.log
+[ERROR] E2E 验收存在失败项

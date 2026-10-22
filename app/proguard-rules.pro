@@ -1,0 +1,3 @@
+-dontwarn io.nekohasekai.libbox.**
+-keep class io.nekohasekai.libbox.** { *; }
+-keep class com.singflow.android.core.engine.** { *; }
