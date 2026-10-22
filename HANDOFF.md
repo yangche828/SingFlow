@@ -7,6 +7,72 @@
 
 ---
 
+## 0. 零上下文接手（5 分钟）
+
+> 给下一个 Agent / 模型：读完本节即可动手，细节在后续章节。
+
+### 0.1 仓库与版本快照
+
+| 项 | 值 |
+| :--- | :--- |
+| 仓库 | `https://github.com/yangche828/SingFlow`（**私有**，默认分支 `main`） |
+| 当前 `main` | `d4cf7e2`（docs：补充 release 精简包与真机验收） |
+| 最新 tag | `v1.0.1`（= `d4cf7e2`）；`v1.0.0` 指向更早的 `0cbfcd1`，仅作历史 |
+| Release | `v1.0.1` / `v1.0.0` 均**未附 APK 资产**，需自行 `assembleRelease` |
+| 已构建产物（本机） | `app/build/outputs/apk/release/app-release.apk`（80.5 MB）、`app/build/outputs/apk/debug/app-debug.apk`（219.7 MB）、桌面副本 `C:\Users\yangche\Desktop\SingFlow-1.0.0-arm64.apk` |
+| 内核 | `app/libs/libbox.aar` 已入库（56 MB），clone 后直接构建，无需额外下载 |
+
+### 0.2 三条命令验证现状
+
+```bash
+git clone https://github.com/yangche828/SingFlow.git && cd SingFlow
+echo "sdk.dir=D:/Apps/Android/Sdk" > local.properties   # 换成你的 SDK 路径
+./gradlew :app:testDebugUnitTest       # 期望 31 tests / 0 failures
+./gradlew :app:assembleDebug           # 期望 BUILD SUCCESSFUL，产物 219.7 MB
+```
+
+端到端验收（不需要公网节点，回环服务端即可 18/18）：
+
+```powershell
+node scripts\dev\vless-loopback-server.js --port 8443          # 另开一个终端
+pwsh -File scripts\e2e_adb_verify.ps1 -ProxyLog <日志路径> -RemoteDns https://doh.pub/dns-query
+```
+
+### 0.3 环境前置（本机实测值）
+
+- JDK 21（`D:\Apps\JDK\jdk-21`）、Android SDK（`D:\Apps\Android\Sdk`，platforms 33/35/36）、Node（`D:\Apps\nodejs\node.exe`）。
+- Gradle 8.10.2（wrapper）/ AGP 8.7.2 / Kotlin 2.0.21；`compileSdk`、`targetSdk` 取本机最高平台（当前 36）。
+- 依赖下载走 `127.0.0.1:10808`（已写入 `C:\Users\yangche\.gradle\gradle.properties`）。
+- Shell 必须用 `pwsh`；PowerShell 5.1 解析 E2E 脚本会报 `MissingEndCurlyBrace`。
+
+### 0.4 设备与网络（最容易卡住的地方）
+
+- 真机：HONOR **BKQ-AN10**，Android **17（API 37）**，`arm64-v8a`，页大小 4096，adb 序列号 `AMRF025A21005896`。
+- **adb 看不到手机**（设备管理器里有 `ADB Interface`，但 `adb devices` 为空）：HONOR/HUAWEI 常把该接口 GUID 绑成厂商值，
+  改回 adb 的 `{F72FE0D4-CBCB-407D-8814-9ED673D0DD6B}` 再 `pnputil /restart-device <InstanceId>`，具体命令见 §7。
+- 真机跑验收前先 `adb shell svc power stayon true`：屏幕熄灭时 `uiautomator dump` 得到空快照，「已保护 / SingFlow 要素」会误报失败。
+- release 包 `debuggable=false` → `run-as` 不可用，「节点入库」断言只能 WARN（不是缺陷）。
+- 推送 GitHub：Schannel 在该代理下握手失败，必须带
+  `git -c http.sslBackend=openssl -c http.version=HTTP/1.1 -c http.proxy=http://127.0.0.1:10808 -c https.proxy=http://127.0.0.1:10808 push origin main`。
+  若代理节点失效（端口在监听但全部超时，`git push` 报 `Empty reply from server` / `Connection was reset`），
+  可改走 GitHub API：`git credential fill` 取 token，`POST /git/blobs` → `/git/trees` → `/git/commits` → `PATCH /git/refs/heads/main`。
+  注意 PowerShell 发 JSON 必须用 `[Text.Encoding]::UTF8.GetBytes(...)`，否则中文提交信息会被二次编码成乱码。
+
+### 0.5 需要人提供、仓库里没有的东西
+
+| 项 | 说明 |
+| :--- | :--- |
+| GitHub 凭据 | 账号 `yangche828`，token 存在 Windows 凭据管理器（`git:https://github.com`）；本机**没有 `gh` CLI** |
+| 真实节点 | 仓库里的真实节点 URI 已脱敏（`203.0.113.10` / `node.example.com` / UUID 全 `0`），**无法复现「真实公网节点 17/17」**；要复现需重新提供节点，跑法见 §7 |
+| 手机 | 上述 HONOR 真机，App 仍安装并保留一个回环 VPN 配置（已 force-stop，不影响手机网络） |
+
+### 0.6 先别动的地方
+
+- 别删 `SingFlowVpnService.fallbackTunDnsServers()`：删了客户端 DNS 会再次绕过隧道（见 §4 踩坑表）。
+- 别把 `InboundConfigInterceptor` 的 `tun.stack = "gvisor"` 改回默认：会导致 TUN TCP 卡死。
+- sing-box 语法红线与 Android 13~17 兼容红线见 `AGENTS.md`；改配置生成逻辑必须同步单测断言。
+- 已知未验证项：**真 16 KB 页设备的运行时证据**（现有真机是 4 KB 页，`zipalign -c -P 16` 只是静态校验）。
+
 ## 1. 任务是什么
 
 按 `singflow_architecture_and_ai_prompts.md` 完成 SingFlow（Android VPN 客户端，Kotlin + Compose + sing-box 1.14.3）Phase 0~6，并把 App 从「TUN 诊断模式」升级为**真正转发流量**，交付可用 APK。
