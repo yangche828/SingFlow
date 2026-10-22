@@ -906,3 +906,19 @@ rows=日本东京/新加坡/美国/回环 连续失败 6 次，健康 0 分
 2. 订阅刷新 Worker 的端到端集成测试（MockWebServer）。
 3. 连接详情按域名复制/加入分流规则。
 4. 异常节点列表点击进入节点详情。
+
+### R26：订阅 HTTP 下载器抽离与 MockWebServer 测试（已完成）
+
+| 模块 | 交付内容 | 验证 |
+| :--- | :--- | :--- |
+| 抽离 | 新增 `SubscriptionHttpClient` + `SubscriptionDownload`，独立处理请求头、超时、5 MiB 上限、BOM 与 Userinfo | 编译 |
+| Manager | `SubscriptionManager` 改为委托下载器，解析/差异逻辑不变 | 全量测试 |
+| 测试 | MockWebServer 3 个集成测试：内容+Userinfo、无 Userinfo、404 抛错 | 全绿 |
+| 依赖 | 新增 `mockwebserver:4.12.0`（仅 testImplementation） | 构建 |
+
+### 下一轮（R27）
+
+1. 分组拖拽手势（替代上/下按钮）。
+2. 连接详情按域名复制/加入分流规则。
+3. 异常节点列表点击进入节点详情。
+4. 订阅 Worker 全流程集成测试（Room + MockWebServer）。

@@ -8,10 +8,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
-import okhttp3.Request
 import java.net.URI
 import java.util.UUID
-import java.util.concurrent.TimeUnit
 
 /**
  * 订阅更新结果。
@@ -46,6 +44,8 @@ class SubscriptionManager(
     private val importManager: UniversalImportManager,
     private val client: OkHttpClient
 ) {
+
+    private val httpClient = SubscriptionHttpClient(client)
 
     /** 观察全部订阅。 */
     fun observeAll(): Flow<List<SubscriptionEntity>> = dao.observeAll()
@@ -85,7 +85,9 @@ class SubscriptionManager(
         val entity = dao.getById(id)
             ?: return SubscriptionRefreshResult(false, "订阅不存在")
         return try {
-            val (text, userInfo) = download(entity.url)
+            val fetched = httpClient.download(entity.url)
+            val text = fetched.content
+            val userInfo = fetched.userInfo
             val parsed = importManager.parseText(text, groupId = entity.id)
             if (parsed.nodes.isEmpty()) {
                 return SubscriptionRefreshResult(
@@ -161,38 +163,7 @@ class SubscriptionManager(
         dao.upsert(entity.copy(autoUpdate = enabled))
     }
 
-    /**
-     * 下载订阅文本，限制 5 MiB，避免异常订阅拖垮进程。
-     */
-    private suspend fun download(url: String): Pair<String, SubscriptionUserInfo?> =
-        withContext(Dispatchers.IO) {
-            val request = Request.Builder()
-                .url(url)
-                .header("User-Agent", USER_AGENT)
-                .header("Accept", "*/*")
-                .get()
-                .build()
-            val downloadClient = client.newBuilder()
-                .callTimeout(30, TimeUnit.SECONDS)
-                .connectTimeout(10, TimeUnit.SECONDS)
-                .readTimeout(20, TimeUnit.SECONDS)
-                .build()
-            downloadClient.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) {
-                    error("HTTP ${response.code}")
-                }
-                val body = response.body ?: error("响应为空")
-                val bytes = body.byteStream().readNBytes(MAX_BYTES + 1)
-                if (bytes.size > MAX_BYTES) {
-                    error("订阅内容超过 5 MiB 限制")
-                }
-                val text = bytes.toString(Charsets.UTF_8).removePrefix("\uFEFF")
-                text to SubscriptionUserInfo.parse(response.header("Subscription-Userinfo"))
-            }
-        }
-
     private companion object {
-        const val MAX_BYTES = 5 * 1024 * 1024
-        const val USER_AGENT = "SingFlow/2.0 (Android)"
+        const val TAG = "SubscriptionManager"
     }
 }
