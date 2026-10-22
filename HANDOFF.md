@@ -228,11 +228,11 @@ pwsh -File scripts\e2e_adb_verify.ps1 -ProxyLog <日志路径> -RemoteDns https:
   ```powershell
   # 1) 起本地 VLESS 回环服务端（TCP + UDP/XUDP）
   Start-Process -FilePath "D:\Apps\nodejs\node.exe" -ArgumentList "scripts\dev\vless-loopback-server.js","--port","8443" `
-    -WorkingDirectory "D:\Workspace\Github\SingFlow" -WindowStyle Hidden `
-    -RedirectStandardOutput "D:\Workspace\Github\SingFlow\acceptance\vless-loopback.log"
+    -WorkingDirectory "D:\Workspace\Github\SingFlow2" -WindowStyle Hidden `
+    -RedirectStandardOutput "D:\Workspace\Github\SingFlow2\acceptance\vless-loopback.log"
   # 2) 跑验收（自动装包、导节点、连隧道、断真实转发）
   pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\e2e_adb_verify.ps1 `
-    -RemoteDns "https://doh.pub/dns-query" -ProxyLog "D:\Workspace\Github\SingFlow\acceptance\vless-loopback.log"
+    -RemoteDns "https://doh.pub/dns-query" -ProxyLog "D:\Workspace\Github\SingFlow2\acceptance\vless-loopback.log"
   ```
 - **一键验收（Linux / macOS / Git Bash）**：
   ```bash
