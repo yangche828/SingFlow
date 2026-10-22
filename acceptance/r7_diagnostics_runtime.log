@@ -1,0 +1,5 @@
+== R7 连接诊断验收 2026-10-23T02:45:38.5865817+08:00 ==
+groups=12
+connections=19 40658 17241
+ui=代理组（12）/ 活跃连接（24）/ 累计流量可见
+screenshots=acceptance/r7_diagnostics.png, acceptance/r7_diagnostics_connections.png

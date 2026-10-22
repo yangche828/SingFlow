@@ -34,6 +34,7 @@ import androidx.navigation.compose.rememberNavController
 import com.singflow.android.ui.components.ImportBottomSheet
 import com.singflow.android.ui.screens.AppRoutingScreen
 import com.singflow.android.ui.screens.DashboardScreen
+import com.singflow.android.ui.screens.DiagnosticsScreen
 import com.singflow.android.ui.screens.LogsScreen
 import com.singflow.android.ui.screens.NodesScreen
 import com.singflow.android.ui.screens.SettingsScreen
@@ -189,6 +190,11 @@ fun SingFlowRoot(viewModel: MainViewModel) {
                             launchSingleTop = true
                         }
                     },
+                    onOpenDiagnostics = {
+                        navController.navigate("diagnostics") {
+                            launchSingleTop = true
+                        }
+                    },
                     onUpdate = { updated -> viewModel.updateSettings { updated } }
                 )
             }
@@ -213,6 +219,13 @@ fun SingFlowRoot(viewModel: MainViewModel) {
                     onToggleAutoUpdate = { id, enabled ->
                         viewModel.setSubscriptionAutoUpdate(id, enabled)
                     }
+                )
+            }
+            composable("diagnostics") {
+                DiagnosticsScreen(
+                    vpnState = vpnState,
+                    selectedNode = selectedNode,
+                    onBack = { navController.popBackStack() }
                 )
             }
         }

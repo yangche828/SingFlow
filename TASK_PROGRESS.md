@@ -403,3 +403,33 @@ worker_log=refresh 127.0.0.1: true 已更新 2 个节点
 2. 节点导出/二维码、配置备份与恢复。
 3. 订阅增量更新测试（节点增删对比）与 Worker 失败重试策略细化。
 4. 为省电档位切换、监控暂停/恢复补服务级回归测试。
+
+### R7：连接诊断面板与 Clash 数据解析（已完成）
+
+| 模块 | 交付内容 | 验证 |
+| :--- | :--- | :--- |
+| Clash 解析 | 新增 `ClashProxyGroup` / `ClashConnection` / `ClashTraffic` 与纯函数 `ClashResponseParser`，解析 `/proxies` 代理组、`/connections` 累计流量与活跃连接 | 3 个 JVM 测试 |
+| API 扩展 | `ClashApiClient.proxyGroups()` / `traffic()` | 编译 + 运行 |
+| 诊断页 | `DiagnosticsScreen`：隧道状态、当前节点/健康分、12 个代理组及当前成员、累计流量、活跃连接（域名、规则、出站链、上下行） | API 33 截图 |
+| 轮询 | `DiagnosticsViewModel` 页面可见时每 2 秒刷新，离开页面停止 | 运行 |
+| 入口 | 设置页「连接诊断（Selector / 活跃连接）」 | 截图 |
+| 缺陷修复 | Clash `/proxies` 响应外层为 `{"proxies":{...}}`，初版按顶层遍历导致「代理组（0）」；兼容外层包装后恢复 12 个组 | 修复前后对比 |
+
+**运行时验收**：
+
+```text
+groups=12
+connections=19（UI 抓取瞬间 24）
+uploadTotal=40658 downloadTotal=17241
+UI=代理组（12）/ 活跃连接 / 累计流量
+```
+
+证据：`acceptance/r7_diagnostics_runtime.log`、`acceptance/r7_diagnostics.png`、
+`acceptance/r7_diagnostics_connections.png`。
+
+### 下一轮（R8）
+
+1. 节点分享链接导出、二维码展示与批量复制。
+2. 配置/节点/订阅备份与恢复（本地文件 + WebDAV 可选）。
+3. 抗封锁增强：TLS fragment、uTLS 指纹、多路复用 padding 配置项。
+4. 订阅增删节点对比测试与 Worker 重试策略细化。

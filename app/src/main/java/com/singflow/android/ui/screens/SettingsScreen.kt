@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Apps
+import androidx.compose.material.icons.rounded.MonitorHeart
 import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -73,6 +74,7 @@ import kotlinx.coroutines.withContext
  * @param subscriptionCount 订阅数量
  * @param onOpenAppRouting 打开应用级国家分流页面
  * @param onOpenSubscriptions 打开订阅管理页面
+ * @param onOpenDiagnostics 打开连接诊断页面
  * @param onUpdate 保存设置
  */
 @Composable
@@ -83,6 +85,7 @@ fun SettingsScreen(
     subscriptionCount: Int = 0,
     onOpenAppRouting: () -> Unit = {},
     onOpenSubscriptions: () -> Unit = {},
+    onOpenDiagnostics: () -> Unit = {},
     onUpdate: (AppSettings) -> Unit
 ) {
     var remoteDns by remember(settings.remoteDns) { mutableStateOf(settings.remoteDns) }
@@ -229,6 +232,15 @@ fun SettingsScreen(
                 Icon(Icons.Rounded.RestartAlt, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("订阅管理（$subscriptionCount 个，12 小时自动更新）")
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            OutlinedButton(
+                onClick = onOpenDiagnostics,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Rounded.MonitorHeart, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("连接诊断（Selector / 活跃连接）")
             }
             Spacer(modifier = Modifier.height(6.dp))
             Text(
@@ -823,3 +835,5 @@ private data class InstalledApp(
     val label: String,
     val packageName: String
 )
+
+

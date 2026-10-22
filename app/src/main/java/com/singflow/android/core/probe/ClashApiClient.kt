@@ -114,6 +114,32 @@ class ClashApiClient(
         }.getOrNull()
     }
 
+    /**
+     * 读取全部代理组（Selector / URLTest 等）。
+     */
+    suspend fun proxyGroups(): List<ClashProxyGroup> = withContext(Dispatchers.IO) {
+        runCatching {
+            val request = Request.Builder().url(url("/proxies")).get().build()
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@use emptyList()
+                ClashResponseParser.parseGroups(response.body?.string().orEmpty(), json)
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    /**
+     * 读取当前连接与累计流量。
+     */
+    suspend fun traffic(): ClashTraffic? = withContext(Dispatchers.IO) {
+        runCatching {
+            val request = Request.Builder().url(url("/connections")).get().build()
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@use null
+                ClashResponseParser.parseTraffic(response.body?.string().orEmpty(), json)
+            }
+        }.getOrNull()
+    }
+
     private fun url(path: String): HttpUrl = "$baseUrl$path".toHttpUrl()
 
     companion object {
