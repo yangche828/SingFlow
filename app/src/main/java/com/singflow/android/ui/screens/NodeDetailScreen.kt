@@ -34,6 +34,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -50,9 +51,12 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.singflow.android.core.export.QrCodeGenerator
 import com.singflow.android.core.model.ProxyNode
 import com.singflow.android.core.probe.LatencyHistoryStore
+import com.singflow.android.ui.NodeDetailViewModel
 import com.singflow.android.ui.components.LatencySparkline
 import com.singflow.android.ui.components.formatLatency
 import com.singflow.android.ui.theme.healthColor
@@ -80,11 +84,13 @@ fun NodeDetailScreen(
     onBack: () -> Unit,
     onSetCurrent: () -> Unit,
     onToggleFavorite: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    nodeDetailViewModel: NodeDetailViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
     var confirmDelete by remember { mutableStateOf(false) }
+    val detailState by nodeDetailViewModel.state.collectAsStateWithLifecycle()
 
     if (node == null) {
         Column(
@@ -99,6 +105,11 @@ fun NodeDetailScreen(
             OutlinedButton(onClick = onBack) { Text("返回") }
         }
         return
+    }
+
+    DisposableEffect(node.id) {
+        nodeDetailViewModel.startPolling(node.id)
+        onDispose { nodeDetailViewModel.stopPolling() }
     }
 
     val samples = remember(node.id) { LatencyHistoryStore.samples(node.id) }
@@ -222,6 +233,31 @@ fun NodeDetailScreen(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "该节点连接（${detailState.connections.size}）",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        when {
+            !detailState.available -> Text(
+                text = "连接 VPN 后可查看经过此节点的活跃连接。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            detailState.connections.isEmpty() -> Text(
+                text = "暂无经过此节点的活跃连接。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            else -> {
+                detailState.connections.forEach { connection ->
+                    ConnectionRow(connection)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
         Text("分享", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(6.dp))
         if (raw.isBlank()) {
@@ -315,6 +351,44 @@ fun NodeDetailScreen(
             }
         )
     }
+}
+
+@Composable
+private fun ConnectionRow(connection: com.singflow.android.core.probe.ClashConnection) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = connection.host.ifBlank { connection.destination },
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = connection.rule.ifBlank { "未命中规则" },
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Text(
+            text = "↑${formatBytes(connection.upload)} ↓${formatBytes(connection.download)}",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.primary
+        )
+    }
+}
+
+private fun formatBytes(bytes: Long): String {
+    if (bytes < 1024) return "$bytes B"
+    val kb = bytes / 1024.0
+    if (kb < 1024) return String.format(Locale.getDefault(), "%.1f KB", kb)
+    return String.format(Locale.getDefault(), "%.1f MB", kb / 1024.0)
 }
 
 @Composable

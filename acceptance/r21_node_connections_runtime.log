@@ -1,0 +1,4 @@
+== R21 节点详情连接列表验收 ==
+connections=该节点连接（20）
+rows=host/rule/↑↓bytes, filtered by chain node-b090...
+screenshot=acceptance/r21_node_connections.png

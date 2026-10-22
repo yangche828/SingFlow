@@ -777,3 +777,28 @@ result=节点页国家组顺序 US → CN → UN（收藏组仍置顶）
 2. 延迟历史落盘（可选）与断线空洞标记。
 3. 分组拖拽手势（替代上/下按钮）。
 4. 订阅刷新 Worker 的端到端集成测试（MockWebServer）。
+
+### R21：节点详情相关连接（已完成）
+
+| 模块 | 交付内容 | 验证 |
+| :--- | :--- | :--- |
+| 观察器 | `NodeDetailViewModel`：每 2 秒拉取 Clash 连接，按 `node-{id}` 出站链过滤 | 运行 |
+| 过滤逻辑 | `connectionsForNode()` 纯函数：按流量降序、最多 20 条 | 2 个单测 |
+| UI | 详情页新增「该节点连接（N）」，展示域名、规则、↑/↓ 流量 | 截图 |
+| 空态 | 未连接或暂无流量时显示对应提示 | 代码 |
+
+**运行时验收**：
+
+```text
+connections=该节点连接（20）
+rows=host/rule/↑↓bytes（chain=node-b090...）
+```
+
+证据：`acceptance/r21_node_connections.png`、`acceptance/r21_node_connections_runtime.log`。
+
+### 下一轮（R22）
+
+1. 延迟历史落盘（可选）与断线空洞标记。
+2. 分组拖拽手势（替代上/下按钮）。
+3. 订阅刷新 Worker 的端到端集成测试（MockWebServer）。
+4. 节点详情页延迟历史与连接列表联动（点击连接查看规则详情）。
