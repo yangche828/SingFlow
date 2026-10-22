@@ -1,6 +1,7 @@
 package com.singflow.android.ui.screens
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Bolt
@@ -27,6 +29,7 @@ import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.Done
+import androidx.compose.material.icons.rounded.DragHandle
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Inbox
@@ -52,17 +55,25 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.singflow.android.core.model.ProxyNode
 import com.singflow.android.ui.components.NodeItemCard
+import kotlin.math.roundToInt
 
 /**
  * 节点库页面：收藏置顶 + 按国家/地区自动分组。
@@ -591,14 +602,67 @@ private fun GroupOrderDialog(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             } else {
-                LazyColumn(modifier = Modifier.heightIn(max = 420.dp)) {
-                    itemsIndexed(order, key = { _, code -> code }) { index, code ->
+                val density = LocalDensity.current
+                val rowHeightPx = with(density) { 44.dp.toPx() }
+                var dragIndex by remember { mutableIntStateOf(-1) }
+                var dragOffset by remember { mutableFloatStateOf(0f) }
+                val currentOrder by rememberUpdatedState(order)
+                Column(
+                    modifier = Modifier
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    currentOrder.forEachIndexed { index, code ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .zIndex(if (index == dragIndex) 1f else 0f)
+                                .graphicsLayer {
+                                    translationY = if (index == dragIndex) dragOffset else 0f
+                                }
+                                .pointerInput(code) {
+                                    detectDragGesturesAfterLongPress(
+                                        onDragStart = {
+                                            dragIndex = currentOrder.indexOf(code)
+                                            dragOffset = 0f
+                                        },
+                                        onDrag = { change, amount ->
+                                            change.consume()
+                                            dragOffset += amount.y
+                                            val from = dragIndex
+                                            if (from >= 0) {
+                                                val target = (from + dragOffset / rowHeightPx)
+                                                    .roundToInt()
+                                                    .coerceIn(0, currentOrder.lastIndex)
+                                                if (target != from) {
+                                                    order = currentOrder.toMutableList().apply {
+                                                        add(target, removeAt(from))
+                                                    }
+                                                    dragOffset -= (target - from) * rowHeightPx
+                                                    dragIndex = target
+                                                }
+                                            }
+                                        },
+                                        onDragEnd = {
+                                            dragIndex = -1
+                                            dragOffset = 0f
+                                        },
+                                        onDragCancel = {
+                                            dragIndex = -1
+                                            dragOffset = 0f
+                                        }
+                                    )
+                                }
                                 .padding(vertical = 2.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            Icon(
+                                Icons.Rounded.DragHandle,
+                                contentDescription = "拖动排序",
+                                modifier = Modifier.size(20.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = labels[code] ?: code,
                                 style = MaterialTheme.typography.bodyMedium,

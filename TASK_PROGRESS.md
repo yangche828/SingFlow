@@ -1100,3 +1100,20 @@ restore=恢复完成：6 个节点、1 个订阅、1 条应用规则
 2. 连接详情按域名加入分流规则。
 3. 订阅 Worker 全流程集成测试（Room + MockWebServer）。
 4. 精选节点导出为 sing-box JSON 文件（SAF）。
+
+### R35：分组拖拽排序手势（已完成）
+
+| 模块 | 交付内容 | 验证 |
+| :--- | :--- | :--- |
+| 拖拽 | 分组排序弹窗每行新增拖拽手柄，长按后上下拖动实时换位 | 编译 |
+| 兼容 | 保留上/下箭头，拖拽与按钮共用同一 `order` 状态 | 代码 |
+| 保存 | 拖动结果通过「保存」持久化到 `countryGroupOrder` | 既有逻辑 |
+
+说明：拖动采用长按手势（`detectDragGesturesAfterLongPress`），避免与弹窗滚动冲突。
+
+### 下一轮（R36）
+
+1. 连接详情按域名加入分流规则。
+2. 订阅 Worker 全流程集成测试（Room + MockWebServer）。
+3. 精选节点导出为 sing-box JSON 文件（SAF）。
+4. 受信任 Wi-Fi（SSID）自动化策略。
