@@ -50,6 +50,7 @@ import com.singflow.android.core.probe.LatencySample
 import com.singflow.android.ui.DiagnosticsReportBuilder
 import com.singflow.android.ui.components.LatencySparkline
 import com.singflow.android.ui.theme.healthColor
+import java.util.Locale
 import com.singflow.android.ui.DiagnosticsViewModel
 import com.singflow.android.ui.components.formatBytes
 
@@ -191,6 +192,23 @@ fun DiagnosticsScreen(
                 }
             }
 
+            if (subscriptions.isNotEmpty()) {
+                item(key = "subscriptions-header") {
+                    Text(
+                        text = "订阅（${subscriptions.size}）",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+                items(subscriptions, key = { "sub-${it.name}" }) { subscription ->
+                    SubscriptionRow(subscription)
+                }
+                item(key = "subscriptions-spacer") {
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+            }
+
             if (!state.available) {
                 item(key = "unavailable") {
                     Text(
@@ -287,6 +305,55 @@ fun DiagnosticsScreen(
             }
         }
     }
+}
+
+@Composable
+private fun SubscriptionRow(subscription: com.singflow.android.ui.SubscriptionReport) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = subscription.name,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = buildString {
+                    if (subscription.total > 0) {
+                        val used = subscription.upload + subscription.download
+                        append("剩余 ${formatGb((subscription.total - used).coerceAtLeast(0))}")
+                        append(" / ${formatGb(subscription.total)}")
+                    } else {
+                        append("无流量信息")
+                    }
+                    if (subscription.expireAt > 0) {
+                        append(" · ")
+                        append(formatExpiry(subscription.expireAt))
+                    }
+                },
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+private fun formatGb(bytes: Long): String {
+    val gb = bytes / 1024.0 / 1024.0 / 1024.0
+    return String.format(Locale.getDefault(), "%.1f GB", gb)
+}
+
+private fun formatExpiry(timestampMs: Long): String {
+    return runCatching {
+        java.text.SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            .format(java.util.Date(timestampMs))
+            .let { "到期 $it" }
+    }.getOrDefault("到期时间未知")
 }
 
 @Composable
