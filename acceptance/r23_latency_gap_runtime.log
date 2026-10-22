@@ -1,0 +1,6 @@
+== R23 延迟断线空洞验收 ==
+seeded=b09051a0-...|ts:20;ts:0;ts:35
+restart=force-stop 后重新打开应用
+chart=最近 3 次 · 失败 1 次 · 最低 20 ms · 最高 35 ms
+gap=失败点以灰色标记，折线在失败处断开
+screenshot=acceptance/r23_latency_gap.png

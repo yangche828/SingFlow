@@ -58,6 +58,24 @@ class LatencyHistoryStoreTest {
     }
 
     @Test
+    fun `failure samples are kept as gaps`() {
+        LatencyHistoryStore.record("node-4", 30, 1000L)
+        LatencyHistoryStore.recordFailure("node-4", 2000L)
+        LatencyHistoryStore.record("node-4", 40, 3000L)
+
+        val samples = LatencyHistoryStore.samples("node-4")
+        assertEquals(3, samples.size)
+        assertTrue(samples[0].isSuccess)
+        assertTrue(!samples[1].isSuccess)
+        assertEquals(0, samples[1].latencyMs)
+        assertTrue(samples[2].isSuccess)
+
+        val decoded = decodeHistory(encodeHistory(mapOf("node-4" to ArrayDeque(samples))))
+        assertEquals(3, decoded["node-4"]?.size)
+        assertEquals(0, decoded["node-4"]?.get(1)?.latencyMs)
+    }
+
+    @Test
     fun `ignores invalid latency and unknown node`() {
         LatencyHistoryStore.record("node-1", 0)
         LatencyHistoryStore.record("node-1", -1)

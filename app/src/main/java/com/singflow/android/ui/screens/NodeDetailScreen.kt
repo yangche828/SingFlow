@@ -215,10 +215,15 @@ fun NodeDetailScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         } else {
-            val min = samples.minOf { it.latencyMs }
-            val max = samples.maxOf { it.latencyMs }
+            val success = samples.filter { it.isSuccess }
+            val min = success.minOfOrNull { it.latencyMs }
+            val max = success.maxOfOrNull { it.latencyMs }
             Text(
-                text = "最近 ${samples.size} 次 · 最低 $min ms · 最高 $max ms",
+                text = if (min != null && max != null) {
+                    "最近 ${samples.size} 次 · 失败 ${samples.size - success.size} 次 · 最低 $min ms · 最高 $max ms"
+                } else {
+                    "最近 ${samples.size} 次 · 全部失败"
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

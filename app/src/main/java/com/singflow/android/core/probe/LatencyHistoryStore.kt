@@ -12,7 +12,10 @@ import java.util.concurrent.ConcurrentHashMap
 data class LatencySample(
     val timestampMs: Long,
     val latencyMs: Int
-)
+) {
+    /** 该次采样是否成功（0 表示超时/失败，用于曲线留空）。 */
+    val isSuccess: Boolean get() = latencyMs > 0
+}
 
 /**
  * 节点延迟历史环形缓冲。
@@ -48,14 +51,25 @@ object LatencyHistoryStore {
         }
     }
 
-    /**
-     * 记录一次成功延迟；非正延迟忽略。
-     */
+    /** 记录一次成功延迟；非正延迟忽略。 */
     @Synchronized
     fun record(nodeId: String, latencyMs: Int, timestampMs: Long = System.currentTimeMillis()) {
         if (nodeId.isBlank() || latencyMs <= 0) return
+        append(nodeId, LatencySample(timestampMs, latencyMs))
+    }
+
+    /**
+     * 记录一次失败采样（延迟 0），用于在趋势图中留出断线空洞。
+     */
+    @Synchronized
+    fun recordFailure(nodeId: String, timestampMs: Long = System.currentTimeMillis()) {
+        if (nodeId.isBlank()) return
+        append(nodeId, LatencySample(timestampMs, 0))
+    }
+
+    private fun append(nodeId: String, sample: LatencySample) {
         val deque = history.getOrPut(nodeId) { ArrayDeque() }
-        deque.addLast(LatencySample(timestampMs, latencyMs))
+        deque.addLast(sample)
         while (deque.size > MAX_SAMPLES) {
             deque.removeFirst()
         }
@@ -117,7 +131,7 @@ internal fun decodeHistory(text: String): Map<String, List<LatencySample>> {
                 val parts = point.split(':')
                 val timestamp = parts.getOrNull(0)?.toLongOrNull()
                 val latency = parts.getOrNull(1)?.toIntOrNull()
-                if (timestamp == null || latency == null || latency <= 0) {
+                if (timestamp == null || latency == null || latency < 0) {
                     null
                 } else {
                     LatencySample(timestamp, latency)

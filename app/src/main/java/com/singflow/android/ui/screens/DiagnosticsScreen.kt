@@ -210,9 +210,11 @@ fun DiagnosticsScreen(
 
 @Composable
 private fun LatencyTrendCard(samples: List<LatencySample>) {
-    val latest = samples.last().latencyMs
-    val min = samples.minOf { it.latencyMs }
-    val max = samples.maxOf { it.latencyMs }
+    val success = samples.filter { it.isSuccess }
+    val latest = samples.last()
+    val failures = samples.size - success.size
+    val min = success.minOfOrNull { it.latencyMs }
+    val max = success.maxOfOrNull { it.latencyMs }
     Card(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
@@ -227,14 +229,22 @@ private fun LatencyTrendCard(samples: List<LatencySample>) {
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = "$latest ms",
+                    text = if (latest.isSuccess) "${latest.latencyMs} ms" else "超时",
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary
+                    color = if (latest.isSuccess) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.error
+                    }
                 )
             }
             Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = "最近 ${samples.size} 次 · 最低 $min ms · 最高 $max ms",
+                text = if (min != null && max != null) {
+                    "最近 ${samples.size} 次 · 失败 $failures 次 · 最低 $min ms · 最高 $max ms"
+                } else {
+                    "最近 ${samples.size} 次 · 全部失败"
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

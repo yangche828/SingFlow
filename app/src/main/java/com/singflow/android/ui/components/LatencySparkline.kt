@@ -18,18 +18,31 @@ import com.singflow.android.core.probe.LatencySample
 fun LatencySparkline(
     samples: List<LatencySample>,
     color: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    failureColor: Color = color.copy(alpha = 0.45f)
 ) {
     Canvas(modifier = modifier) {
         if (samples.size < 2) return@Canvas
-        val min = samples.minOf { it.latencyMs }
-        val max = samples.maxOf { it.latencyMs }
+        val successSamples = samples.filter { it.isSuccess }
+        if (successSamples.isEmpty()) return@Canvas
+        val min = successSamples.minOf { it.latencyMs }
+        val max = successSamples.maxOf { it.latencyMs }
         val span = (max - min).coerceAtLeast(1)
         val stepX = size.width / (samples.size - 1)
         var previous: Offset? = null
         samples.forEachIndexed { index, sample ->
+            val x = stepX * index
+            if (!sample.isSuccess) {
+                drawCircle(
+                    color = failureColor,
+                    radius = 2.5f,
+                    center = Offset(x, size.height - 3f)
+                )
+                previous = null
+                return@forEachIndexed
+            }
             val point = Offset(
-                x = stepX * index,
+                x = x,
                 y = size.height * (1f - (sample.latencyMs - min).toFloat() / span)
             )
             previous?.let { start ->

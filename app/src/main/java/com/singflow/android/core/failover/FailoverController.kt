@@ -81,6 +81,8 @@ class FailoverController(
 
         if (currentAlive) {
             LatencyHistoryStore.record(currentNode.id, currentResult?.latencyMs ?: -1)
+        } else {
+            LatencyHistoryStore.recordFailure(currentNode.id)
         }
 
         return if (!currentAlive) {

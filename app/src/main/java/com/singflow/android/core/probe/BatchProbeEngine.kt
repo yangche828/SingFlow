@@ -68,6 +68,8 @@ class BatchProbeEngine(
                     val result = prober.probe(node, timeoutMs)
                     if (result.success) {
                         LatencyHistoryStore.record(node.id, result.latencyMs, result.checkedAtMs)
+                    } else {
+                        LatencyHistoryStore.recordFailure(node.id, result.checkedAtMs)
                     }
                     store.update(
                         NodeHealthScorer.evaluateAfterProbe(

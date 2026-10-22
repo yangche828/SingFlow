@@ -256,6 +256,8 @@ class MainViewModel @Inject constructor(
                     nodeRepository.updateLatency(id, latency)
                     if (latency > 0) {
                         LatencyHistoryStore.record(id, latency)
+                    } else {
+                        LatencyHistoryStore.recordFailure(id)
                     }
                 }
                 _testing.value = false
