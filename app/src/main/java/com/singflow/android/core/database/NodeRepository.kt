@@ -81,50 +81,7 @@ class NodeRepository(
             if (existing == null) {
                 nodeDao.upsert(incoming)
             } else {
-                nodeDao.update(
-                    existing.copy(
-                        configHash = incoming.configHash,
-                        rawOutboundJson = incoming.rawOutboundJson,
-                        rawShareUri = incoming.rawShareUri.ifBlank { existing.rawShareUri },
-                        name = incoming.name,
-                        groupId = incoming.groupId,
-                        protocol = incoming.protocol,
-                        server = incoming.server,
-                        port = incoming.port,
-                        uuid = incoming.uuid,
-                        alterId = incoming.alterId,
-                        securityCipher = incoming.securityCipher,
-                        flow = incoming.flow,
-                        password = incoming.password,
-                        method = incoming.method,
-                        plugin = incoming.plugin,
-                        pluginOpts = incoming.pluginOpts,
-                        upMbps = incoming.upMbps,
-                        downMbps = incoming.downMbps,
-                        obfsType = incoming.obfsType,
-                        obfsPassword = incoming.obfsPassword,
-                        congestionControl = incoming.congestionControl,
-                        udpRelayMode = incoming.udpRelayMode,
-                        wgPrivateKey = incoming.wgPrivateKey,
-                        wgPeerPublicKey = incoming.wgPeerPublicKey,
-                        wgPreSharedKey = incoming.wgPreSharedKey,
-                        wgLocalAddress = incoming.wgLocalAddress,
-                        wgReserved = incoming.wgReserved,
-                        wgMtu = incoming.wgMtu,
-                        transportJson = incoming.transportJson,
-                        tlsJson = incoming.tlsJson,
-                        countryCode = if (existing.isRegionVerified) {
-                            existing.countryCode
-                        } else {
-                            incoming.countryCode
-                        },
-                        countryNameCn = if (existing.isRegionVerified) {
-                            existing.countryNameCn
-                        } else {
-                            incoming.countryNameCn
-                        }
-                    )
-                )
+                nodeDao.update(NodeMerge.preserve(existing, incoming))
             }
             written++
         }
