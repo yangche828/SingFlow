@@ -568,3 +568,30 @@ restore=已从 WebDAV 下载备份；恢复完成：6 个节点、1 个订阅、
 2. 节点真实出口 GeoIP 批量探测与自动命名。
 3. Worker 失败重试策略细化（指数退避、最大重试次数）。
 4. 备份加密（可选口令加密，防止 WebDAV 服务端读取节点凭据）。
+
+### R13：口令加密备份（已完成）
+
+| 模块 | 交付内容 | 验证 |
+| :--- | :--- | :--- |
+| 加密格式 | `EncryptedBackupEnvelope` + `BackupCipher`：PBKDF2-HMAC-SHA256（12 万次）+ AES-256-GCM，信封含 salt/iv/ciphertext | 3 个单测 |
+| 导出 | 备份口令非空时输出加密信封；口令仅存在内存，不落盘 | 运行验证 |
+| 恢复 | 自动识别加密信封；未填口令提示「该备份已加密，请先填写备份口令」，口令错误提示「口令错误或文件已损坏」 | 运行验证 |
+| WebDAV | 上传/下载同样支持加密备份 | 代码 |
+| UI | 本地备份区新增口令输入框，说明加密用途 | 截图 |
+
+**运行时验收**：
+
+```text
+passphrase=test123（仅内存）
+envelope=singflow-encrypted-backup / version=1 / iterations=120000 / ciphertext_len=13168
+restore=恢复完成：6 个节点、1 个订阅、1 条应用规则，请重新连接
+```
+
+证据：`acceptance/r13_encrypted_backup.png`、`acceptance/r13_encrypted_backup_runtime.log`。
+
+### 下一轮（R14）
+
+1. 节点分组拖拽排序（收藏组/国家组）。
+2. 节点真实出口 GeoIP 批量探测与自动命名。
+3. Worker 失败重试策略细化（指数退避、最大重试次数）。
+4. 订阅更新时保留节点收藏/健康统计的端到端测试。

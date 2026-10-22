@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.singflow.android.core.export.QrCodeGenerator
+import com.singflow.android.core.backup.BackupCipher
 import com.singflow.android.core.model.ProxyNode
 import com.singflow.android.ui.BackupViewModel
 import kotlinx.coroutines.Dispatchers
@@ -88,6 +89,7 @@ fun ExportBackupScreen(
     val scope = rememberCoroutineScope()
     val message by backupViewModel.message.collectAsStateWithLifecycle()
     var showWebDavDialog by remember { mutableStateOf(false) }
+    var backupPassphrase by remember { mutableStateOf("") }
 
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
@@ -95,14 +97,16 @@ fun ExportBackupScreen(
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
             runCatching {
-                val payload = backupViewModel.buildBackup()
+                val payload = backupViewModel.buildBackup(backupPassphrase)
                 withContext(Dispatchers.IO) {
                     context.contentResolver.openOutputStream(uri)?.use { output ->
                         output.write(payload.toByteArray(Charsets.UTF_8))
                     } ?: error("无法写入文件")
                 }
             }.onSuccess {
-                backupViewModel.notify("备份已导出")
+                backupViewModel.notify(
+                    if (backupPassphrase.isBlank()) "备份已导出" else "加密备份已导出"
+                )
             }.onFailure {
                 backupViewModel.notify("导出失败：${it.message}")
             }
@@ -123,8 +127,10 @@ fun ExportBackupScreen(
             }.getOrNull()
             if (text.isNullOrBlank()) {
                 backupViewModel.notify("读取备份文件失败")
+            } else if (BackupCipher.isEncrypted(text) && backupPassphrase.isBlank()) {
+                backupViewModel.notify("该备份已加密，请先填写备份口令")
             } else {
-                backupViewModel.restore(text)
+                backupViewModel.restore(text, backupPassphrase)
             }
         }
     }
@@ -313,6 +319,24 @@ fun ExportBackupScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(8.dp))
+        OutlinedTextField(
+            value = backupPassphrase,
+            onValueChange = { backupPassphrase = it },
+            label = { Text("备份口令（可选，用于加密）") },
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                keyboardType = KeyboardType.Password
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "填写口令后导出为 AES-256 加密备份；恢复加密备份时需输入同一口令。",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(
                 onClick = { exportLauncher.launch("singflow-backup.json") },
@@ -358,7 +382,7 @@ fun ExportBackupScreen(
             Spacer(modifier = Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
-                    onClick = { backupViewModel.uploadWebDav() },
+                    onClick = { backupViewModel.uploadWebDav(backupPassphrase) },
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(Icons.Rounded.FileUpload, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -366,7 +390,7 @@ fun ExportBackupScreen(
                     Text("上传备份")
                 }
                 OutlinedButton(
-                    onClick = { backupViewModel.downloadWebDav() },
+                    onClick = { backupViewModel.downloadWebDav(backupPassphrase) },
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(Icons.Rounded.FileDownload, contentDescription = null, modifier = Modifier.size(16.dp))

@@ -3,6 +3,7 @@ package com.singflow.android.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.singflow.android.core.backup.BackupManager
+import com.singflow.android.core.backup.BackupCipher
 import com.singflow.android.core.backup.BackupRestoreResult
 import com.singflow.android.core.backup.WebDavClient
 import com.singflow.android.core.backup.WebDavCrypto
@@ -31,16 +32,30 @@ class BackupViewModel @Inject constructor(
     /** 一次性操作提示。 */
     val message: StateFlow<String?> = _message.asStateFlow()
 
-    /** 生成备份 JSON（IO 线程）。 */
-    suspend fun buildBackup(): String = withContext(Dispatchers.IO) {
-        backupManager.buildBackup()
+    /** 生成备份 JSON（IO 线程）；口令非空时输出加密信封。 */
+    suspend fun buildBackup(passphrase: String = ""): String = withContext(Dispatchers.IO) {
+        val plain = backupManager.buildBackup()
+        if (passphrase.isBlank()) plain else BackupCipher.encrypt(plain, passphrase)
     }
 
-    /** 从备份 JSON 恢复。 */
-    fun restore(raw: String) {
+    /**
+     * 从备份 JSON 恢复。
+     *
+     * 加密信封使用口令解密；明文备份忽略口令。
+     */
+    fun restore(raw: String, passphrase: String = "") {
         viewModelScope.launch {
+            val payload = if (BackupCipher.isEncrypted(raw)) {
+                BackupCipher.decrypt(raw, passphrase)
+                    ?: run {
+                        _message.value = "备份口令错误或文件已损坏"
+                        return@launch
+                    }
+            } else {
+                raw
+            }
             val result: BackupRestoreResult = withContext(Dispatchers.IO) {
-                backupManager.restore(raw)
+                backupManager.restore(payload)
             }
             _message.value = result.message
         }
@@ -75,11 +90,11 @@ class BackupViewModel @Inject constructor(
         }
     }
 
-    /** 上传当前备份到 WebDAV。 */
-    fun uploadWebDav() {
+    /** 上传当前备份到 WebDAV；口令非空时上传加密备份。 */
+    fun uploadWebDav(passphrase: String = "") {
         viewModelScope.launch {
             val current = preferencesManager.current()
-            val payload = withContext(Dispatchers.IO) { backupManager.buildBackup() }
+            val payload = buildBackup(passphrase)
             val result = webDavClient.upload(
                 url = current.webdavUrl,
                 username = current.webdavUsername,
@@ -90,8 +105,8 @@ class BackupViewModel @Inject constructor(
         }
     }
 
-    /** 从 WebDAV 下载并恢复备份。 */
-    fun downloadWebDav() {
+    /** 从 WebDAV 下载并恢复备份；加密备份需填写口令。 */
+    fun downloadWebDav(passphrase: String = "") {
         viewModelScope.launch {
             val current = preferencesManager.current()
             val result = webDavClient.download(
@@ -103,8 +118,7 @@ class BackupViewModel @Inject constructor(
                 _message.value = result.message
                 return@launch
             }
-            val restored = withContext(Dispatchers.IO) { backupManager.restore(result.content) }
-            _message.value = "${result.message}；${restored.message}"
+            restore(result.content, passphrase)
         }
     }
 
