@@ -48,6 +48,9 @@ Android 13~17（API 33~37）上的 sing-box 客户端：Jetpack Compose UI + sin
 > release 仅含 arm64，**x86_64 模拟器无法运行**（缺内核会在连接瞬间 SIGILL，属 ARM 翻译层限制）；模拟器验收请用 `debug`。
 > 对外发布前请替换 `app/build.gradle.kts` 中 `release.signingConfig` 为正式 keystore。
 
+预编译包：[Releases v1.0.1](https://github.com/yangche828/SingFlow/releases/tag/v1.0.1) 附带 `SingFlow-1.0.1-arm64.apk`（80.5 MB，
+SHA256 `7f641f022d06603483c974d7e3a7fd771a27467a6e9623ac68dab902bbe2acb7`），可直接 `adb install -r` 到 Android 13+ 的 arm64 设备。
+
 ## 验收
 
 两套等价脚本（`.ps1` 为 Windows 主脚本，`.sh` 为 Linux/macOS/Git Bash 姊妹脚本，断言项一致）：

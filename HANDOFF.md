@@ -18,7 +18,7 @@
 | 仓库 | `https://github.com/yangche828/SingFlow`（**私有**，默认分支 `main`） |
 | 当前 `main` | 以远端为准（本节首次提交为 `55aa807`；用 `git log -1` 取实际值） |
 | 最新 tag | `v1.0.1` = `d4cf7e2`（release 构建 + 真机验收文档）；`v1.0.0` 指向更早的 `0cbfcd1`，仅作历史 |
-| Release | `v1.0.1` / `v1.0.0` 均**未附 APK 资产**，需自行 `assembleRelease` |
+| Release | `v1.0.1` 已附 `SingFlow-1.0.1-arm64.apk`（80.5 MB，SHA256 `7f641f022d06…`)；`v1.0.0` 无资产 |
 | 已构建产物（本机） | `app/build/outputs/apk/release/app-release.apk`（80.5 MB）、`app/build/outputs/apk/debug/app-debug.apk`（219.7 MB）、桌面副本 `C:\Users\yangche\Desktop\SingFlow-1.0.0-arm64.apk` |
 | 内核 | `app/libs/libbox.aar` 已入库（56 MB），clone 后直接构建，无需额外下载 |
 
