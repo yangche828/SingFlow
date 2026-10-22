@@ -1,5 +1,6 @@
 package com.singflow.android.core.engine
 
+import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -8,6 +9,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.net.IpPrefix
 import android.net.VpnService
@@ -164,6 +166,7 @@ class SingFlowVpnService : VpnService() {
         if (TrustedWifi.isTrusted(applicationContext, currentSettings)) {
             Log.i(TAG, "当前 Wi-Fi 属于受信任网络，跳过代理启动")
             VpnStateRepository.setError("当前 Wi-Fi 已标记为受信任，已跳过代理")
+            postTrustedWifiNotification()
             stopSelf()
             return
         }
@@ -701,6 +704,37 @@ class SingFlowVpnService : VpnService() {
         }.onFailure { Log.w(TAG, "更新通知失败", it) }
     }
 
+    /**
+     * 受信任 Wi-Fi 跳过代理时提示用户；离开该网络后可从通知回到 App 重新连接。
+     */
+    private fun postTrustedWifiNotification() {
+        if (Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+        val contentIntent = PendingIntent.getActivity(
+            this,
+            2,
+            Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_singflow_logo)
+            .setContentTitle("受信任 Wi-Fi · 已跳过代理")
+            .setContentText("离开该网络后可打开 SingFlow 重新连接")
+            .setContentIntent(contentIntent)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+        runCatching {
+            NotificationManagerCompat.from(this).notify(TRUSTED_WIFI_NOTIFICATION_ID, notification)
+        }.onFailure { Log.w(TAG, "受信任 Wi-Fi 通知发送失败", it) }
+    }
+
     private fun buildNotification(
         status: VpnStatus,
         nodeName: String,
@@ -777,6 +811,9 @@ class SingFlowVpnService : VpnService() {
 
     companion object {
         private const val TAG = "SingFlowVpnService"
+
+        /** 受信任 Wi-Fi 提示通知 ID。 */
+        private const val TRUSTED_WIFI_NOTIFICATION_ID = 2002
         private const val CHANNEL_ID = "singflow_vpn"
         private const val NOTIFICATION_ID = 1001
 
