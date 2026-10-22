@@ -114,6 +114,7 @@ fun SettingsScreen(
     var pendingWifiAdd by remember { mutableStateOf(false) }
     var showAddSsidDialog by remember { mutableStateOf(false) }
     var manualSsid by remember { mutableStateOf("") }
+    var domainInput by remember { mutableStateOf("") }
 
     fun addCurrentWifi() {
         val ssid = TrustedWifi.currentSsid(context)
@@ -339,6 +340,65 @@ fun SettingsScreen(
                 checked = settings.autoConnectOnBoot,
                 onCheckedChange = { onUpdate(settings.copy(autoConnectOnBoot = it)) }
             )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        SettingsSection(title = "域名直连白名单") {
+            Text(
+                text = "命中的域名及其子域强制直连，不经过代理。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(
+                    value = domainInput,
+                    onValueChange = { domainInput = it },
+                    label = { Text("域名，如 example.com") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(
+                    onClick = {
+                        val domain = domainInput.trim().removePrefix("http://").removePrefix("https://")
+                            .substringBefore('/')
+                        if (domain.isNotBlank()) {
+                            onUpdate(
+                                settings.copy(
+                                    directDomains = (settings.directDomains + domain).distinct()
+                                )
+                            )
+                            domainInput = ""
+                        }
+                    }
+                ) { Text("添加") }
+            }
+            settings.directDomains.forEach { domain ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = domain,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(
+                        onClick = {
+                            onUpdate(settings.copy(directDomains = settings.directDomains - domain))
+                        },
+                        modifier = Modifier.size(30.dp)
+                    ) {
+                        Icon(
+                            Icons.Rounded.Close,
+                            contentDescription = "移除 $domain",
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(12.dp))

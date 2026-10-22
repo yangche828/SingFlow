@@ -89,6 +89,7 @@ fun NodeDetailScreen(
     onSetCurrent: () -> Unit,
     onToggleFavorite: () -> Unit,
     onDelete: () -> Unit,
+    onAddDirectDomain: (String) -> Unit = {},
     nodeDetailViewModel: NodeDetailViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
@@ -408,12 +409,21 @@ fun NodeDetailScreen(
             },
             confirmButton = {
                 Row {
-                    TextButton(
-                        onClick = {
-                            clipboard.setText(AnnotatedString(connection.host))
-                            selectedConnection = null
-                        }
-                    ) { Text("复制域名") }
+                    if (connection.host.isNotBlank()) {
+                        TextButton(
+                            onClick = {
+                                onAddDirectDomain(connection.host)
+                                Toast.makeText(context, "已加入域名直连白名单", Toast.LENGTH_SHORT).show()
+                                selectedConnection = null
+                            }
+                        ) { Text("域名直连") }
+                        TextButton(
+                            onClick = {
+                                clipboard.setText(AnnotatedString(connection.host))
+                                selectedConnection = null
+                            }
+                        ) { Text("复制域名") }
+                    }
                     TextButton(onClick = { selectedConnection = null }) { Text("关闭") }
                 }
             }

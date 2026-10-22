@@ -233,6 +233,17 @@ class SingBoxConfigPipelineTest {
     }
 
     @Test
+    fun `direct domains compile to direct route rule`() {
+        val settings = AppSettings.DEFAULT.copy(directDomains = listOf("example.com", "intra.local"))
+        val root = pipeline.compile(vmessNode, settings)
+        val rules = root["route"]!!.jsonObject["rules"]!!.jsonArray
+        val domainRule = rules.map { it.jsonObject }.firstOrNull { it["domain_suffix"] != null }
+        assertNotNull(domainRule)
+        assertEquals("direct", domainRule!!["outbound"]!!.jsonPrimitive.content)
+        assertEquals(2, domainRule["domain_suffix"]!!.jsonArray.size)
+    }
+
+    @Test
     fun `wireguard uses endpoints and never creates block or dns outbound`() {
         assertNoDeprecatedFields(wireGuardNode, AppSettings.DEFAULT)
         val root = pipeline.compile(wireGuardNode, AppSettings.DEFAULT)

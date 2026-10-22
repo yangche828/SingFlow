@@ -171,6 +171,13 @@ fun SingFlowRoot(viewModel: MainViewModel) {
                             viewModel.deleteNode(node.id)
                             navController.popBackStack()
                         }
+                    },
+                    onAddDirectDomain = { domain ->
+                        viewModel.updateSettings { current ->
+                            current.copy(
+                                directDomains = (current.directDomains + domain).distinct()
+                            )
+                        }
                     }
                 )
             }

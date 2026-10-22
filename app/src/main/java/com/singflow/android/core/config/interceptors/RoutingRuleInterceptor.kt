@@ -50,7 +50,19 @@ class RoutingRuleInterceptor : ConfigInterceptor {
                     put("outbound", "direct")
                 }
             )
-            // 3.1 应用级国家分流（多节点编译时生效，必须排在大陆分流之前）
+            // 3.1 域名直连白名单（用户显式配置，优先于大陆分流）
+            if (settings.directDomains.isNotEmpty()) {
+                add(
+                    buildJsonObject {
+                        putJsonArray("domain_suffix") {
+                            settings.directDomains.forEach { add(it) }
+                        }
+                        put("action", "route")
+                        put("outbound", "direct")
+                    }
+                )
+            }
+            // 3.2 应用级国家分流（多节点编译时生效，必须排在大陆分流之前）
             if (context.nodes.size > 1) {
                 buildAppRouteRules(context).forEach { add(it) }
             }
