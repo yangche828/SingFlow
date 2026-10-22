@@ -1,6 +1,7 @@
 package com.singflow.android.ui.screens
 
 import android.content.Intent
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -37,6 +38,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -93,6 +95,7 @@ fun NodeDetailScreen(
     val clipboard = LocalClipboardManager.current
     var confirmDelete by remember { mutableStateOf(false) }
     var selectedConnection by remember { mutableStateOf<ClashConnection?>(null) }
+    var historyVersion by remember { mutableIntStateOf(0) }
     val detailState by nodeDetailViewModel.state.collectAsStateWithLifecycle()
 
     if (node == null) {
@@ -115,7 +118,7 @@ fun NodeDetailScreen(
         onDispose { nodeDetailViewModel.stopPolling() }
     }
 
-    val samples = remember(node.id) { LatencyHistoryStore.samples(node.id) }
+    val samples = remember(node.id, historyVersion) { LatencyHistoryStore.samples(node.id) }
     val raw = node.rawShareUri.orEmpty()
     val qr by produceState<android.graphics.Bitmap?>(initialValue = null, raw) {
         value = if (raw.isBlank()) {
@@ -218,7 +221,23 @@ fun NodeDetailScreen(
         }
 
         Spacer(modifier = Modifier.height(14.dp))
-        Text("延迟趋势", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "延迟趋势",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f)
+            )
+            if (samples.isNotEmpty()) {
+                TextButton(
+                    onClick = {
+                        LatencyHistoryStore.clear(node.id)
+                        historyVersion += 1
+                        Toast.makeText(context, "已清空该节点延迟历史", Toast.LENGTH_SHORT).show()
+                    }
+                ) { Text("清空") }
+            }
+        }
         Spacer(modifier = Modifier.height(6.dp))
         if (samples.size < 2) {
             Text(

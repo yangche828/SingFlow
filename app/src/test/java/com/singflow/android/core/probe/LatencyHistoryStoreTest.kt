@@ -33,6 +33,18 @@ class LatencyHistoryStoreTest {
     }
 
     @Test
+    fun `clear persists empty history`() {
+        val directory = Files.createTempDirectory("latency-clear").toFile()
+        LatencyHistoryStore.attach(directory)
+        LatencyHistoryStore.record("node-5", 42, 1000L)
+        LatencyHistoryStore.clear("node-5")
+
+        LatencyHistoryStore.attach(directory)
+
+        assertTrue(LatencyHistoryStore.samples("node-5").isEmpty())
+    }
+
+    @Test
     fun `history survives reattach`() {
         val directory = Files.createTempDirectory("latency-history").toFile()
         LatencyHistoryStore.attach(directory)

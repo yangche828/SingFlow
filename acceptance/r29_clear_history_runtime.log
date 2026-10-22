@@ -1,0 +1,6 @@
+== R29 清空延迟历史与报告分享验收 ==
+entry=节点详情 → 延迟趋势 → 清空
+before=最近 3 次 · 失败 1 次 · 最低 20 ms · 最高 35 ms
+after=暂无历史采样；files/singflow/latency_history.txt 为空
+diagnostics=新增“分享诊断报告”按钮（系统分享面板）
+screenshot=acceptance/r29_clear_history.png

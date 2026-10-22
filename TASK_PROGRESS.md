@@ -973,3 +973,28 @@ clipboard_preview=SingFlow 诊断报告 / 时间 / VPN / 节点 / 规则命中
 2. 连接详情按域名加入分流规则。
 3. 订阅 Worker 全流程集成测试（Room + MockWebServer）。
 4. 诊断报告导出为文件/分享。
+
+### R29：清空延迟历史与诊断报告分享（已完成）
+
+| 模块 | 交付内容 | 验证 |
+| :--- | :--- | :--- |
+| 清空历史 | 节点详情「延迟趋势」右侧新增「清空」，清除内存+文件并刷新为空态 | 截图 |
+| 分享报告 | 诊断页新增「分享诊断报告」，调起系统分享面板 | 代码 |
+| 持久化 | `clear` 后重新 attach 仍为空 | 单测 |
+| 交互 | 清空后 Toast「已清空该节点延迟历史」 | 运行 |
+
+**运行时验收**：
+
+```text
+before=最近 3 次 · 失败 1 次 · 最低 20 ms · 最高 35 ms
+after=暂无历史采样；files/singflow/latency_history.txt 为空
+```
+
+证据：`acceptance/r29_clear_history.png`、`acceptance/r29_clear_history_runtime.log`。
+
+### 下一轮（R30）
+
+1. 分组拖拽手势（替代上/下按钮）。
+2. 连接详情按域名加入分流规则。
+3. 订阅 Worker 全流程集成测试（Room + MockWebServer）。
+4. 诊断报告导出为文件（SAF）。

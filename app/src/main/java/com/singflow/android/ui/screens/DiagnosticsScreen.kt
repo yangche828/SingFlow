@@ -1,5 +1,6 @@
 package com.singflow.android.ui.screens
 
+import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -70,6 +72,16 @@ fun DiagnosticsScreen(
     val state by diagnosticsViewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
+    val reportText = DiagnosticsReportBuilder.build(
+        vpnState = vpnState,
+        selectedNode = selectedNode,
+        allNodes = allNodes,
+        available = state.available,
+        groups = state.groups,
+        ruleHits = state.ruleHits,
+        chainHits = state.chainHits,
+        latencyHistory = state.latencyHistory
+    )
     val problemNodes = remember(allNodes) {
         allNodes.filter { it.consecutiveFailures > 0 || it.isCoolingDown() }
             .sortedWith(
@@ -110,21 +122,23 @@ fun DiagnosticsScreen(
             }
             IconButton(
                 onClick = {
-                    val report = DiagnosticsReportBuilder.build(
-                        vpnState = vpnState,
-                        selectedNode = selectedNode,
-                        allNodes = allNodes,
-                        available = state.available,
-                        groups = state.groups,
-                        ruleHits = state.ruleHits,
-                        chainHits = state.chainHits,
-                        latencyHistory = state.latencyHistory
-                    )
-                    clipboard.setText(AnnotatedString(report))
+                    clipboard.setText(AnnotatedString(reportText))
                     Toast.makeText(context, "诊断报告已复制", Toast.LENGTH_SHORT).show()
                 }
             ) {
                 Icon(Icons.Rounded.ContentCopy, contentDescription = "复制诊断报告")
+            }
+            IconButton(
+                onClick = {
+                    val intent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, reportText)
+                        putExtra(Intent.EXTRA_SUBJECT, "SingFlow 诊断报告")
+                    }
+                    context.startActivity(Intent.createChooser(intent, "分享诊断报告"))
+                }
+            ) {
+                Icon(Icons.Rounded.Share, contentDescription = "分享诊断报告")
             }
             IconButton(onClick = { diagnosticsViewModel.refresh() }) {
                 Icon(Icons.Rounded.Refresh, contentDescription = "刷新")
