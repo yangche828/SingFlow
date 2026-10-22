@@ -34,6 +34,8 @@ data class ClashProxyGroup(
  * @property chains 出站链
  * @property upload 上传字节
  * @property download 下载字节
+ * @property processName 发起连接的应用进程名
+ * @property processPath 应用进程路径
  */
 data class ClashConnection(
     val id: String,
@@ -43,7 +45,9 @@ data class ClashConnection(
     val rule: String,
     val chains: List<String>,
     val upload: Long,
-    val download: Long
+    val download: Long,
+    val processName: String = "",
+    val processPath: String = ""
 ) {
     /** 出站链展示文本。 */
     val chainText: String get() = chains.joinToString(" → ")
@@ -124,7 +128,9 @@ object ClashResponseParser {
                 rule = if (rule.isBlank()) payload else if (payload.isBlank()) rule else "$rule($payload)",
                 chains = chains,
                 upload = obj["upload"]?.jsonPrimitive?.longOrNull ?: 0L,
-                download = obj["download"]?.jsonPrimitive?.longOrNull ?: 0L
+                download = obj["download"]?.jsonPrimitive?.longOrNull ?: 0L,
+                processName = metadata?.get("process")?.jsonPrimitive?.contentOrNull.orEmpty(),
+                processPath = metadata?.get("processPath")?.jsonPrimitive?.contentOrNull.orEmpty()
             )
         }
         return ClashTraffic(

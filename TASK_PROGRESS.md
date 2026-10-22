@@ -1050,3 +1050,20 @@ restore=恢复完成：6 个节点、1 个订阅、1 条应用规则
 2. 连接详情按域名加入分流规则。
 3. 订阅 Worker 全流程集成测试（Room + MockWebServer）。
 4. 精选节点导出为 sing-box JSON 文件（SAF）。
+
+### R32：连接诊断显示应用进程（已完成）
+
+| 模块 | 交付内容 | 验证 |
+| :--- | :--- | :--- |
+| 模型 | `ClashConnection` 新增 `processName` / `processPath` | 编译 |
+| 解析 | 从 `/connections` 的 `metadata.process` / `metadata.processPath` 读取 | 单测 |
+| 展示 | 诊断连接列表显示「进程名 · 规则」；节点详情连接行同步；连接弹窗新增「应用」 | 代码 |
+
+说明：Clash 返回的进程名可能是包名或可执行名，直接展示原文，不做包名反查，避免误导。
+
+### 下一轮（R33）
+
+1. 分组拖拽手势（替代上/下按钮）。
+2. 连接详情按域名加入分流规则。
+3. 订阅 Worker 全流程集成测试（Room + MockWebServer）。
+4. 精选节点导出为 sing-box JSON 文件（SAF）。

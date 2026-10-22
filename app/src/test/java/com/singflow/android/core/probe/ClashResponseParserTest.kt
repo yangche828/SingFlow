@@ -52,7 +52,9 @@ class ClashResponseParserTest {
                     "network": "tcp",
                     "host": "example.com",
                     "destinationIP": "1.2.3.4",
-                    "destinationPort": "443"
+                    "destinationPort": "443",
+                    "process": "com.example.app",
+                    "processPath": "/data/app/com.example.app/base.apk"
                   }
                 }
               ]
@@ -72,6 +74,8 @@ class ClashResponseParserTest {
         assertTrue(connection.rule.contains("geosite-cn"))
         assertEquals("proxy → node-jp", connection.chainText)
         assertEquals(10L, connection.upload)
+        assertEquals("com.example.app", connection.processName)
+        assertTrue(connection.processPath.endsWith("base.apk"))
     }
 
     @Test

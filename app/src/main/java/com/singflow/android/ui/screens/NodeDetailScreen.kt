@@ -394,6 +394,9 @@ fun NodeDetailScreen(
             title = { Text("连接详情") },
             text = {
                 Column {
+                    if (connection.processName.isNotBlank()) {
+                        InfoLine("应用", connection.processName)
+                    }
                     InfoLine("目标", connection.destination)
                     InfoLine("网络", connection.network.ifBlank { "未知" })
                     InfoLine("命中规则", connection.rule.ifBlank { "未命中规则" })
@@ -435,7 +438,13 @@ private fun ConnectionRow(connection: ClashConnection, onClick: () -> Unit) {
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                text = connection.rule.ifBlank { "未命中规则" },
+                text = buildString {
+                    if (connection.processName.isNotBlank()) {
+                        append(connection.processName)
+                        append(" · ")
+                    }
+                    append(connection.rule.ifBlank { "未命中规则" })
+                },
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,

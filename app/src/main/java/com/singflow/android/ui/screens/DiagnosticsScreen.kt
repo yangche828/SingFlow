@@ -478,6 +478,10 @@ private fun ConnectionRow(connection: ClashConnection) {
         }
         Text(
             text = buildString {
+                if (connection.processName.isNotBlank()) {
+                    append(connection.processName)
+                    append(" · ")
+                }
                 append(connection.destination)
                 if (connection.rule.isNotBlank()) append(" · ${connection.rule}")
             },
