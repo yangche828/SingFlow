@@ -1,0 +1,7 @@
+== R15 真实出口实测验收 ==
+nodes=6 (2 live loopback, 4 dead)
+egress_8445=120.244.213.111 CN verified=1
+egress_8446=120.244.213.111 CN verified=1
+dead_nodes=unverified (scan failed, no overwrite)
+selector_restored=node-b09051a0-6f46-4888-ada9-5aff297de26b
+screenshot=acceptance/r15_geoip_scan.png

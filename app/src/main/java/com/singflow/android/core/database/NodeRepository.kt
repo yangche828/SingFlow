@@ -43,6 +43,11 @@ class NodeRepository(
     suspend fun getByGroup(groupId: String): List<ProxyNode> =
         nodeDao.getByGroup(groupId).map { it.toDomainSafe() }
 
+    /** 写入实测出口 IP 与国家。 */
+    suspend fun updateEgress(id: String, egressIp: String, countryCode: String, countryNameCn: String) {
+        nodeDao.updateEgress(id, egressIp, countryCode, countryNameCn)
+    }
+
     /** 读取自动切换候选。 */
     suspend fun getHealthyCandidates(
         nowMs: Long = System.currentTimeMillis(),

@@ -24,6 +24,7 @@ import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.Done
 import androidx.compose.material.icons.rounded.Inbox
+import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material.icons.rounded.Sort
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -66,12 +67,16 @@ fun NodesScreen(
     onImportClick: () -> Unit,
     onClearAll: () -> Unit,
     onBatchDelete: (Set<String>) -> Unit = {},
-    onBatchFavorite: (Set<String>, Boolean) -> Unit = { _, _ -> }
+    onBatchFavorite: (Set<String>, Boolean) -> Unit = { _, _ -> },
+    geoScanning: Boolean = false,
+    canScanGeoIp: Boolean = false,
+    onScanGeoIp: () -> Unit = {}
 ) {
     var sortByLatency by remember { mutableStateOf(false) }
     var selectionMode by remember { mutableStateOf(false) }
     var selectedIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var confirmBatchDelete by remember { mutableStateOf(false) }
+    var confirmGeoScan by remember { mutableStateOf(false) }
     var batchHint by remember { mutableStateOf<String?>(null) }
     val clipboard = LocalClipboardManager.current
     val groups = remember(nodes, sortByLatency) {
@@ -244,6 +249,27 @@ fun NodesScreen(
                     Text(if (sortByLatency) "延迟排序中" else "延迟排序")
                 }
             }
+            if (nodes.size > 1) {
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = { confirmGeoScan = true },
+                    enabled = canScanGeoIp && !geoScanning,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    if (geoScanning) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("实测出口中…")
+                    } else {
+                        Icon(Icons.Rounded.Public, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("实测节点真实出口")
+                    }
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -345,6 +371,30 @@ fun NodesScreen(
             },
             dismissButton = {
                 TextButton(onClick = { confirmBatchDelete = false }) { Text("取消") }
+            }
+        )
+    }
+
+    if (confirmGeoScan) {
+        AlertDialog(
+            onDismissRequest = { confirmGeoScan = false },
+            title = { Text("实测节点真实出口") },
+            text = {
+                Text(
+                    "将逐个把 Selector 切换到每个节点并请求 Cloudflare Trace，读取真实出口 IP 与国家，" +
+                        "完成后恢复原节点。扫描期间网络会短暂中断（每个节点约 2–4 秒），确定继续？"
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmGeoScan = false
+                        onScanGeoIp()
+                    }
+                ) { Text("开始实测") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmGeoScan = false }) { Text("取消") }
             }
         )
     }

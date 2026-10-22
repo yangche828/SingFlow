@@ -14,6 +14,8 @@ import com.singflow.android.core.engine.VpnControl
 import com.singflow.android.core.engine.VpnStateRepository
 import com.singflow.android.core.failover.RepositoryNodeStore
 import com.singflow.android.core.model.AppSettings
+import com.singflow.android.core.model.CountryNames
+import com.singflow.android.core.model.ProtocolType
 import com.singflow.android.core.model.ProxyNode
 import com.singflow.android.core.model.RoutingMode
 import com.singflow.android.core.model.VpnState
@@ -22,9 +24,12 @@ import com.singflow.android.core.parser.UniversalImportManager
 import com.singflow.android.core.probe.BatchProbeEngine
 import com.singflow.android.core.probe.ClashApiClient
 import com.singflow.android.core.probe.ClashApiNodeProber
+import com.singflow.android.core.probe.MixedProxyNodeProber
 import com.singflow.android.core.subscription.SubscriptionManager
+import okhttp3.OkHttpClient
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -47,7 +52,8 @@ class MainViewModel @Inject constructor(
     private val latencyTester: NodeLatencyTester,
     private val clashApiClient: ClashApiClient,
     private val appRouteRuleRepository: AppRouteRuleRepository,
-    private val subscriptionManager: SubscriptionManager
+    private val subscriptionManager: SubscriptionManager,
+    private val okHttpClient: OkHttpClient
 ) : ViewModel() {
 
     /** 全部节点。 */
@@ -93,6 +99,11 @@ class MainViewModel @Inject constructor(
 
     /** 是否正在导入。 */
     val importing: StateFlow<Boolean> = _importing.asStateFlow()
+
+    private val _geoScanning = MutableStateFlow(false)
+
+    /** 是否正在逐个节点实测真实出口。 */
+    val geoScanning: StateFlow<Boolean> = _geoScanning.asStateFlow()
 
     private val _message = MutableStateFlow<String?>(null)
 
@@ -295,6 +306,75 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 逐个切换 Selector 并实测节点真实出口，失败后恢复原节点。
+     *
+     * 仅在已连接且开启多节点国家分组时可用；扫描期间网络会随节点切换短暂中断。
+     */
+    fun scanGeoIp() {
+        if (_geoScanning.value) return
+        viewModelScope.launch {
+            _geoScanning.value = true
+            val original = runCatching { clashApiClient.selectedMember("proxy") }.getOrNull()
+            try {
+                val currentSettings = settings.value
+                if (VpnStateRepository.snapshot().status != VpnStatus.CONNECTED) {
+                    _message.value = "请先连接 VPN 再实测出口"
+                    return@launch
+                }
+                if (!currentSettings.countryRoutingEnabled || nodes.value.size <= 1) {
+                    _message.value = "需要开启多节点国家分组后再实测出口"
+                    return@launch
+                }
+                val candidates = nodes.value
+                    .filter { it.protocol != ProtocolType.WIREGUARD }
+                    .take(MAX_GEO_SCAN_NODES)
+                if (candidates.isEmpty()) {
+                    _message.value = "没有可实测的节点"
+                    return@launch
+                }
+                val prober = MixedProxyNodeProber(currentSettings.mixedPort, okHttpClient)
+                var success = 0
+                var failed = 0
+                withContext(Dispatchers.IO) {
+                    candidates.forEachIndexed { index, node ->
+                        _message.value = "实测出口 ${index + 1}/${candidates.size}：${node.displayName}"
+                        val switched = clashApiClient.select("proxy", "node-${node.id}")
+                        if (!switched) {
+                            failed += 1
+                            return@forEachIndexed
+                        }
+                        delay(350)
+                        val result = prober.probe(
+                            node,
+                            currentSettings.failover.singleProbeTimeoutMs.coerceAtLeast(3_000)
+                        )
+                        val ip = result.egressIp
+                        val code = result.countryCode
+                        if (result.success && !ip.isNullOrBlank() && !code.isNullOrBlank()) {
+                            nodeRepository.updateEgress(
+                                id = node.id,
+                                egressIp = ip,
+                                countryCode = code,
+                                countryNameCn = result.countryNameCn
+                                    ?: CountryNames.nameOf(code)
+                            )
+                            success += 1
+                        } else {
+                            failed += 1
+                        }
+                    }
+                }
+                _message.value = "真实出口实测完成：成功 $success，失败 $failed"
+            } finally {
+                if (!original.isNullOrBlank()) {
+                    runCatching { clashApiClient.select("proxy", original) }
+                }
+                _geoScanning.value = false
+            }
+        }
+    }
+
     /** 清空全部节点。 */
     fun clearNodes() {
         viewModelScope.launch {
@@ -485,5 +565,10 @@ class MainViewModel @Inject constructor(
         } else {
             configPipeline.diagnostics(node, currentSettings, dir)
         }
+    }
+
+    private companion object {
+        /** 单次实测出口的最大节点数，避免逐个切换耗时过长。 */
+        const val MAX_GEO_SCAN_NODES = 20
     }
 }

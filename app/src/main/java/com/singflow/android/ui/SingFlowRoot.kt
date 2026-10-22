@@ -64,6 +64,7 @@ fun SingFlowRoot(viewModel: MainViewModel) {
     val message by viewModel.message.collectAsStateWithLifecycle()
     val appRouteRules by viewModel.appRouteRules.collectAsStateWithLifecycle()
     val subscriptions by viewModel.subscriptions.collectAsStateWithLifecycle()
+    val geoScanning by viewModel.geoScanning.collectAsStateWithLifecycle()
 
     var showImportSheet by remember { mutableStateOf(false) }
 
@@ -159,7 +160,12 @@ fun SingFlowRoot(viewModel: MainViewModel) {
                     },
                     onClearAll = viewModel::clearNodes,
                     onBatchDelete = viewModel::deleteNodes,
-                    onBatchFavorite = { ids, favorite -> viewModel.setFavorite(ids, favorite) }
+                    onBatchFavorite = { ids, favorite -> viewModel.setFavorite(ids, favorite) },
+                    geoScanning = geoScanning,
+                    canScanGeoIp = vpnState.isConnected &&
+                        settings.countryRoutingEnabled &&
+                        nodes.size > 1,
+                    onScanGeoIp = viewModel::scanGeoIp
                 )
             }
             composable("logs") {

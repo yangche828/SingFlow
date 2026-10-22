@@ -621,3 +621,32 @@ http204=204
 2. 节点真实出口 GeoIP 批量探测与自动命名。
 3. 订阅更新时保留收藏/健康统计的端到端测试。
 4. 连接诊断增加“规则命中统计”和延迟历史曲线。
+
+### R15：节点真实出口 GeoIP 批量实测（已完成）
+
+| 模块 | 交付内容 | 验证 |
+| :--- | :--- | :--- |
+| 扫描逻辑 | `MainViewModel.scanGeoIp()`：逐个 `PUT /proxies/proxy` 切换节点 → 等待 350ms → 经 mixed 请求 Cloudflare Trace/GeoIP → 写回真实出口 IP 与国家 | 运行验证 |
+| 安全兜底 | 扫描前保存当前 Selector，`finally` 恢复；仅多节点分组 + 已连接可用；跳过 WireGuard；单次最多 20 个节点 | 运行验证 |
+| 数据层 | `NodeDao.updateEgress()` / `NodeRepository.updateEgress()` 写 `egressIp/countryCode/countryNameCn/isRegionVerified` | 编译 |
+| UI | 节点页新增「实测节点真实出口」，二次确认并提示扫描期间网络短暂中断；扫描中显示进度态 | 截图 |
+| 失败策略 | 节点不可用时不覆盖已有国家信息，只计入失败数 | 运行验证 |
+
+**运行时验收**：
+
+```text
+nodes=6 (2 live loopback, 4 dead)
+egress_8445=120.244.213.111 CN verified=1
+egress_8446=120.244.213.111 CN verified=1
+dead_nodes=unverified
+selector_restored=node-b09051a0-6f46-4888-ada9-5aff297de26b
+```
+
+证据：`acceptance/r15_geoip_scan.png`、`acceptance/r15_geoip_scan_runtime.log`。
+
+### 下一轮（R16）
+
+1. 节点分组拖拽排序（收藏组/国家组）。
+2. 连接诊断增加规则命中统计与节点延迟历史曲线。
+3. 订阅更新保留收藏/健康统计的端到端测试。
+4. 节点详情页（单节点配置、分享、延迟趋势）。

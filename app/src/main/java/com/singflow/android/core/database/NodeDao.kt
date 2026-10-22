@@ -44,6 +44,24 @@ interface NodeDao {
     @Query("SELECT * FROM nodes WHERE groupId = :groupId ORDER BY createdAt ASC")
     suspend fun getByGroup(groupId: String): List<NodeEntity>
 
+    /** 写入实测出口信息。 */
+    @Query(
+        """
+        UPDATE nodes SET
+            egressIp = :egressIp,
+            countryCode = :countryCode,
+            countryNameCn = :countryNameCn,
+            isRegionVerified = 1
+        WHERE id = :id
+        """
+    )
+    suspend fun updateEgress(
+        id: String,
+        egressIp: String,
+        countryCode: String,
+        countryNameCn: String
+    )
+
     /**
      * 查询可参与自动切换的健康候选：未处于冷却期且健康分达标。
      */
