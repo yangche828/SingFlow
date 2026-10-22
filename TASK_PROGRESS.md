@@ -1308,3 +1308,42 @@ restore=恢复完成：6 个节点、1 个订阅、1 条应用规则
 2. 订阅卡片长按显示刷新/删除快捷操作。
 3. 磁贴点击在受信任 Wi-Fi 下打开 App 说明页。
 4. 域名白名单支持通配符/正则校验与重复提示。
+
+## 最终完成审计（R48）
+
+### 需求覆盖
+
+| 需求 | 状态 | 证据 |
+| :--- | :--- | :--- |
+| 代理抗封锁（TLS 分片/uTLS/mux） | 完成 | R9，`AntiBlockingConfig`、`ProxyOutboundFactory`、设置页 |
+| 安全 DNS / FakeIP / 防逃逸 | 完成 | `DnsConfigInterceptor`、FakeIP 开关、运行 204 验证 |
+| 批量导入/并发探活/评分 | 完成 | `BatchProbeEngine`、`NodeHealthScorer`、GeoIP 实测 |
+| 应用级国家分流与故障切换 | 完成 | `CountryRoutingCompiler`、`FailoverController`、运行切换日志 |
+| 物理网络重绑/protect/互斥 | 完成 | `UnderlyingNetworkTracker`、`SingFlowVpnService` |
+| 三级省电/日志熔断/APK 瘦身 | 完成 | `PowerStateController`、release arm64/zh-CN |
+| 三屏中文 UI/搜索/折叠/批量/详情 | 完成 | Dashboard/Nodes/Settings 截图与测试 |
+| 订阅/备份/WebDAV/加密/Gzip | 完成 | R6/R12/R13/R31 运行验收 |
+| 诊断（规则/链路/进程/延迟/报告） | 完成 | R16/R17/R21/R28 运行验收 |
+| 精选节点导出（链接/Base64/sing-box） | 完成 | R30/R37 单测与运行 |
+| 受信任 Wi-Fi | 基础完成 | 命中时跳过代理+通知；离开后自动重连受系统 FGS 限制未启用 |
+| 快捷磁贴 | 完成 | 状态/副标题/受信任提示 |
+
+### 构建与质量门禁
+
+```text
+./gradlew :app:testDebugUnitTest  -> 141 tests, 0 failures
+./gradlew :app:assembleRelease    -> BUILD SUCCESSFUL
+APK: 84,951,708 bytes
+ABI: arm64-v8a（仅此一个）
+locales: --_--, zh-CN
+minSdk 33 / targetSdk 36
+zipalign -c -P 16 -v 4 -> Verification successful
+TODO/FIXME/省略: 0
+main 源码 android.util.Base64: 0
+```
+
+### 已知限制
+
+1. 受信任 Wi-Fi 仅实现「连接时跳过代理」，离开受信任网络后的自动恢复依赖用户点击通知/打开 App（后台启动 FGS 受 Android 12+ 限制）。
+2. SSID 读取需要定位权限与系统定位开关，无法读取时功能静默不可用。
+3. 未做 50+ 节点批量导入的实机压力测试；并发探活逻辑有单测覆盖。
