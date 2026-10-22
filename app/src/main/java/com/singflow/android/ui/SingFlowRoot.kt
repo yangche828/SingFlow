@@ -284,6 +284,9 @@ fun SingFlowRoot(viewModel: MainViewModel) {
                             expireAt = subscription.expireAt
                         )
                     },
+                    onOpenSubscriptions = {
+                        navController.navigate("subscriptions") { launchSingleTop = true }
+                    },
                     onOpenNodeDetail = { node ->
                         navController.navigate("node-detail/${node.id}") {
                             launchSingleTop = true

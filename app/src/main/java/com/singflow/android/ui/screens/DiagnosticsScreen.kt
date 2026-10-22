@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Card
@@ -69,6 +70,7 @@ fun DiagnosticsScreen(
     onBack: () -> Unit,
     allNodes: List<ProxyNode> = emptyList(),
     subscriptions: List<com.singflow.android.ui.SubscriptionReport> = emptyList(),
+    onOpenSubscriptions: () -> Unit = {},
     onOpenNodeDetail: (ProxyNode) -> Unit = {},
     diagnosticsViewModel: DiagnosticsViewModel = hiltViewModel()
 ) {
@@ -202,7 +204,7 @@ fun DiagnosticsScreen(
                     Spacer(modifier = Modifier.height(4.dp))
                 }
                 items(subscriptions, key = { "sub-${it.name}" }) { subscription ->
-                    SubscriptionRow(subscription)
+                    SubscriptionRow(subscription) { onOpenSubscriptions() }
                 }
                 item(key = "subscriptions-spacer") {
                     Spacer(modifier = Modifier.height(12.dp))
@@ -308,11 +310,15 @@ fun DiagnosticsScreen(
 }
 
 @Composable
-private fun SubscriptionRow(subscription: com.singflow.android.ui.SubscriptionReport) {
+private fun SubscriptionRow(
+    subscription: com.singflow.android.ui.SubscriptionReport,
+    onClick: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 5.dp),
+            .clickable(onClick = onClick)
+            .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
@@ -340,6 +346,12 @@ private fun SubscriptionRow(subscription: com.singflow.android.ui.SubscriptionRe
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+        Icon(
+            Icons.Rounded.ChevronRight,
+            contentDescription = "打开订阅管理",
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(18.dp)
+        )
     }
 }
 
