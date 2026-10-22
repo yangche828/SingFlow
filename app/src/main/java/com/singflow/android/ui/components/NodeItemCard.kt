@@ -16,32 +16,36 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.singflow.android.core.model.ProxyNode
 import com.singflow.android.ui.theme.badgeColor
+import com.singflow.android.ui.theme.healthColor
 import com.singflow.android.ui.theme.latencyColor
 
 /**
  * 节点卡片。
  *
+ * 展示协议角标、名称、国家/地区、健康度标签、实测延迟与收藏状态。
+ *
  * @param node 节点
  * @param selected 是否当前选中
  * @param onClick 点击选择
  * @param onDelete 删除
+ * @param onToggleFavorite 切换收藏
  */
 @Composable
 fun NodeItemCard(
@@ -49,9 +53,11 @@ fun NodeItemCard(
     selected: Boolean,
     onClick: () -> Unit,
     onDelete: () -> Unit,
+    onToggleFavorite: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val badge = node.protocol.badgeColor()
+    val healthTint = healthColor(node.healthScore)
     Card(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
@@ -94,6 +100,22 @@ fun NodeItemCard(
                     overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(3.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = node.countryLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "${node.healthTag} ${node.healthScore}",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = healthTint
+                    )
+                }
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = "${node.server}:${node.port}",
                     style = MaterialTheme.typography.bodySmall,
@@ -118,12 +140,19 @@ fun NodeItemCard(
                 )
             }
 
-            Spacer(modifier = Modifier.width(6.dp))
+            Spacer(modifier = Modifier.width(2.dp))
 
-            RadioButton(
-                selected = selected,
-                onClick = onClick
-            )
+            IconButton(onClick = onToggleFavorite, modifier = Modifier.size(36.dp)) {
+                Icon(
+                    imageVector = if (node.isFavorite) Icons.Rounded.Star else Icons.Rounded.StarBorder,
+                    contentDescription = if (node.isFavorite) "取消收藏" else "收藏节点",
+                    tint = if (node.isFavorite) {
+                        MaterialTheme.colorScheme.tertiary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                )
+            }
 
             IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
                 Icon(

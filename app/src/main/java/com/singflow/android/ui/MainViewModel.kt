@@ -4,17 +4,22 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.singflow.android.core.config.SingBoxConfigPipeline
+import com.singflow.android.core.database.AppRouteRuleRepository
 import com.singflow.android.core.database.NodeRepository
 import com.singflow.android.core.database.PreferencesManager
 import com.singflow.android.core.engine.NodeLatencyTester
 import com.singflow.android.core.engine.VpnControl
 import com.singflow.android.core.engine.VpnStateRepository
+import com.singflow.android.core.failover.RepositoryNodeStore
 import com.singflow.android.core.model.AppSettings
 import com.singflow.android.core.model.ProxyNode
 import com.singflow.android.core.model.RoutingMode
 import com.singflow.android.core.model.VpnState
 import com.singflow.android.core.model.VpnStatus
 import com.singflow.android.core.parser.UniversalImportManager
+import com.singflow.android.core.probe.BatchProbeEngine
+import com.singflow.android.core.probe.ClashApiClient
+import com.singflow.android.core.probe.ClashApiNodeProber
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,11 +41,17 @@ class MainViewModel @Inject constructor(
     private val preferencesManager: PreferencesManager,
     private val importManager: UniversalImportManager,
     private val configPipeline: SingBoxConfigPipeline,
-    private val latencyTester: NodeLatencyTester
+    private val latencyTester: NodeLatencyTester,
+    private val clashApiClient: ClashApiClient,
+    appRouteRuleRepository: AppRouteRuleRepository
 ) : ViewModel() {
 
     /** 全部节点。 */
     val nodes: StateFlow<List<ProxyNode>> = nodeRepository.observeNodes()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** 应用级国家分流规则。 */
+    private val appRouteRules = appRouteRuleRepository.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** 全局设置。 */
@@ -56,11 +67,11 @@ class MainViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /** 当前节点编译出的完整 sing-box JSON。 */
-    val configPreview: StateFlow<String> = combine(selectedNode, settings) { node, current ->
+    val configPreview: StateFlow<String> = combine(selectedNode, settings, appRouteRules) { node, current, rules ->
         if (node == null) {
             ""
         } else {
-            runCatching { configPipeline.compilePretty(node, current, com.singflow.android.SingFlowApp.ruleSetDir.absolutePath) }
+            runCatching { compilePretty(node, current) }
                 .getOrElse { "// 配置编译失败: ${it.message}" }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
@@ -108,18 +119,13 @@ class MainViewModel @Inject constructor(
             preferencesManager.setSelectedNode(node.id)
             val status = VpnStateRepository.snapshot().status
             if (status == VpnStatus.CONNECTED || status == VpnStatus.CONNECTING) {
-                val config = runCatching {
-                    configPipeline.compileCompact(
-                        node,
-                        settings.value,
-                        com.singflow.android.SingFlowApp.ruleSetDir.absolutePath
-                    )
-                }
+                val currentSettings = settings.value
+                val config = runCatching { compileCompact(node, currentSettings) }
                     .getOrElse {
                         _message.value = "配置编译失败: ${it.message}"
                         return@launch
                     }
-                VpnControl.reload(context.applicationContext, config, node.id, node.displayName, settings.value)
+                VpnControl.reload(context.applicationContext, config, node.id, node.displayName, currentSettings)
             }
         }
     }
@@ -139,22 +145,12 @@ class MainViewModel @Inject constructor(
             return
         }
         val currentSettings = settings.value
-        val config = runCatching {
-            configPipeline.compileCompact(
-                node,
-                currentSettings,
-                com.singflow.android.SingFlowApp.ruleSetDir.absolutePath
-            )
-        }
+        val config = runCatching { compileCompact(node, currentSettings) }
             .getOrElse {
                 _message.value = "配置编译失败: ${it.message}"
                 return
             }
-        configPipeline.diagnostics(
-            node,
-            currentSettings,
-            com.singflow.android.SingFlowApp.ruleSetDir.absolutePath
-        ).forEach { line ->
+        diagnostics(node, currentSettings).forEach { line ->
             VpnStateRepository.addLog("INFO", line)
         }
         VpnControl.connect(context, config, node.id, node.displayName, currentSettings)
@@ -214,13 +210,36 @@ class MainViewModel @Inject constructor(
             }
             _testing.value = true
             val started = System.currentTimeMillis()
-            val results = latencyTester.testAll(list) { id, latency ->
-                nodeRepository.updateLatency(id, latency)
+            val currentSettings = settings.value
+            val connected = VpnStateRepository.snapshot().status == VpnStatus.CONNECTED
+            val groupedProbeReady = connected &&
+                currentSettings.countryRoutingEnabled &&
+                clashApiClient.isAvailable()
+            if (groupedProbeReady) {
+                // 多节点配置下每个节点都有独立 outbound，使用 Clash API 实测真实 RTT，
+                // 不会改变当前出站选择。
+                val engine = BatchProbeEngine(
+                    prober = ClashApiNodeProber(clashApiClient),
+                    store = RepositoryNodeStore(nodeRepository),
+                    concurrency = BatchProbeEngine.DEFAULT_CONCURRENCY
+                )
+                val summary = engine.probeAll(
+                    nodes = list,
+                    timeoutMs = currentSettings.failover.singleProbeTimeoutMs
+                )
+                _testing.value = false
+                val elapsed = System.currentTimeMillis() - started
+                _message.value =
+                    "探活完成：${summary.successCount}/${summary.total} 可达（实测 RTT），耗时 ${elapsed}ms"
+            } else {
+                val results = latencyTester.testAll(list) { id, latency ->
+                    nodeRepository.updateLatency(id, latency)
+                }
+                _testing.value = false
+                val elapsed = System.currentTimeMillis() - started
+                val reachable = results.values.count { it >= 0 }
+                _message.value = "测速完成：$reachable/${results.size} 可达，耗时 ${elapsed}ms"
             }
-            _testing.value = false
-            val elapsed = System.currentTimeMillis() - started
-            val reachable = results.values.count { it >= 0 }
-            _message.value = "测速完成：$reachable/${results.size} 可达，耗时 ${elapsed}ms"
         }
     }
 
@@ -232,6 +251,13 @@ class MainViewModel @Inject constructor(
                 val next = nodes.value.firstOrNull { it.id != nodeId }
                 preferencesManager.setSelectedNode(next?.id.orEmpty())
             }
+        }
+    }
+
+    /** 切换节点收藏状态。 */
+    fun toggleFavorite(node: ProxyNode) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { nodeRepository.setFavorite(node.id, !node.isFavorite) }
         }
     }
 
@@ -262,5 +288,70 @@ class MainViewModel @Inject constructor(
     /** 清空导入提示。 */
     fun clearImportMessage() {
         _importMessage.value = null
+    }
+
+    // ---------------------------------------------------------------------
+    // 配置编译
+    // ---------------------------------------------------------------------
+
+    /**
+     * 参与多节点编译的节点集合。
+     *
+     * 过滤掉明显无效的节点，并保证当前节点一定在列表中（否则内核会回退到第一个节点）。
+     */
+    private fun groupedNodes(current: ProxyNode): List<ProxyNode> {
+        val valid = nodes.value.filter { it.server.isNotBlank() && it.port in 1..65535 }
+        return if (valid.any { it.id == current.id }) valid else valid + current
+    }
+
+    /** 单节点 / 多节点自适应紧凑配置。 */
+    private fun compileCompact(node: ProxyNode, currentSettings: AppSettings): String {
+        val dir = com.singflow.android.SingFlowApp.ruleSetDir.absolutePath
+        val all = groupedNodes(node)
+        return if (currentSettings.countryRoutingEnabled && all.size > 1) {
+            configPipeline.compileCompact(
+                nodes = all,
+                selectedNodeId = node.id,
+                settings = currentSettings,
+                appRouteRules = appRouteRules.value,
+                ruleSetDir = dir
+            )
+        } else {
+            configPipeline.compileCompact(node, currentSettings, dir)
+        }
+    }
+
+    /** 单节点 / 多节点自适应带缩进配置。 */
+    private fun compilePretty(node: ProxyNode, currentSettings: AppSettings): String {
+        val dir = com.singflow.android.SingFlowApp.ruleSetDir.absolutePath
+        val all = groupedNodes(node)
+        return if (currentSettings.countryRoutingEnabled && all.size > 1) {
+            configPipeline.compilePretty(
+                nodes = all,
+                selectedNodeId = node.id,
+                settings = currentSettings,
+                appRouteRules = appRouteRules.value,
+                ruleSetDir = dir
+            )
+        } else {
+            configPipeline.compilePretty(node, currentSettings, dir)
+        }
+    }
+
+    /** 单节点 / 多节点自适应编译诊断。 */
+    private fun diagnostics(node: ProxyNode, currentSettings: AppSettings): List<String> {
+        val dir = com.singflow.android.SingFlowApp.ruleSetDir.absolutePath
+        val all = groupedNodes(node)
+        return if (currentSettings.countryRoutingEnabled && all.size > 1) {
+            configPipeline.diagnostics(
+                nodes = all,
+                selectedNodeId = node.id,
+                settings = currentSettings,
+                appRouteRules = appRouteRules.value,
+                ruleSetDir = dir
+            )
+        } else {
+            configPipeline.diagnostics(node, currentSettings, dir)
+        }
     }
 }

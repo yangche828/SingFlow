@@ -107,4 +107,29 @@ object DatabaseModule {
     fun provideNodeLatencyTester(okHttpClient: OkHttpClient): com.singflow.android.core.engine.NodeLatencyTester {
         return com.singflow.android.core.engine.NodeLatencyTester(okHttpClient)
     }
+
+    /** Clash API 客户端（探活 / Selector 热切换）。 */
+    @Provides
+    @Singleton
+    fun provideClashApiClient(okHttpClient: OkHttpClient): com.singflow.android.core.probe.ClashApiClient {
+        return com.singflow.android.core.probe.ClashApiClient(okHttpClient)
+    }
+
+    /** 自动切换节点存储适配器。 */
+    @Provides
+    @Singleton
+    fun provideNodeStore(
+        repository: NodeRepository
+    ): com.singflow.android.core.failover.NodeStore {
+        return com.singflow.android.core.failover.RepositoryNodeStore(repository)
+    }
+
+    /** 本机底层网络可用性判定。 */
+    @Provides
+    @Singleton
+    fun provideLocalNetworkVerifier(
+        @ApplicationContext context: Context
+    ): com.singflow.android.core.failover.LocalNetworkVerifier {
+        return com.singflow.android.core.failover.AndroidLocalNetworkVerifier(context)
+    }
 }

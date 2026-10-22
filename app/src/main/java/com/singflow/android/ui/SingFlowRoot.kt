@@ -61,6 +61,13 @@ fun SingFlowRoot(viewModel: MainViewModel) {
 
     var showImportSheet by remember { mutableStateOf(false) }
 
+    val countries = remember(nodes) {
+        nodes.filter { it.countryCode.length == 2 && it.countryCode.uppercase() != "UN" }
+            .distinctBy { it.countryCode.uppercase() }
+            .map { it.countryCode.uppercase() to it.countryNameCn }
+            .sortedBy { it.second }
+    }
+
     LaunchedEffect(message) {
         val current = message
         if (current != null) {
@@ -138,6 +145,7 @@ fun SingFlowRoot(viewModel: MainViewModel) {
                     statusMessage = null,
                     onSelect = { node -> viewModel.selectNode(context, node) },
                     onDelete = viewModel::deleteNode,
+                    onToggleFavorite = viewModel::toggleFavorite,
                     onTestAll = viewModel::testAllLatency,
                     onImportClick = {
                         viewModel.clearImportMessage()
@@ -164,6 +172,7 @@ fun SingFlowRoot(viewModel: MainViewModel) {
             composable("settings") {
                 SettingsScreen(
                     settings = settings,
+                    countries = countries,
                     onUpdate = { updated -> viewModel.updateSettings { updated } }
                 )
             }

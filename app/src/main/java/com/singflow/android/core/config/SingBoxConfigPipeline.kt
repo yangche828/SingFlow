@@ -129,6 +129,30 @@ class SingBoxConfigPipeline(
         return context.diagnostics.toList()
     }
 
+    /**
+     * 多节点编译诊断。
+     */
+    fun diagnostics(
+        nodes: List<ProxyNode>,
+        selectedNodeId: String,
+        settings: AppSettings,
+        appRouteRules: List<AppRouteRuleEntity> = emptyList(),
+        ruleSetDir: String? = null
+    ): List<String> {
+        require(nodes.isNotEmpty()) { "至少需要一个节点才能编译配置" }
+        val selected = nodes.firstOrNull { it.id == selectedNodeId } ?: nodes.first()
+        val effectiveNodes = if (selected.protocol == ProtocolType.WIREGUARD) listOf(selected) else nodes
+        val context = SingBoxConfigContext(
+            node = selected,
+            settings = settings,
+            ruleSetDir = ruleSetDir,
+            nodes = effectiveNodes,
+            appRouteRules = appRouteRules
+        )
+        interceptors.forEach { it.intercept(context) }
+        return context.diagnostics.toList()
+    }
+
     companion object {
         /**
          * 默认拦截器链。扩展新能力时在此追加。

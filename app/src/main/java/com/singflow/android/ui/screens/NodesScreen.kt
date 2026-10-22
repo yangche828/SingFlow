@@ -40,7 +40,7 @@ import com.singflow.android.core.model.ProxyNode
 import com.singflow.android.ui.components.NodeItemCard
 
 /**
- * 节点库页面。
+ * 节点库页面：收藏置顶 + 按国家/地区自动分组。
  */
 @Composable
 fun NodesScreen(
@@ -50,17 +50,14 @@ fun NodesScreen(
     statusMessage: String?,
     onSelect: (ProxyNode) -> Unit,
     onDelete: (String) -> Unit,
+    onToggleFavorite: (ProxyNode) -> Unit,
     onTestAll: () -> Unit,
     onImportClick: () -> Unit,
     onClearAll: () -> Unit
 ) {
     var sortByLatency by remember { mutableStateOf(false) }
-    val displayed = remember(nodes, sortByLatency) {
-        if (sortByLatency) {
-            nodes.sortedWith(compareBy({ if (it.latencyMs < 0) Int.MAX_VALUE else it.latencyMs }, { it.name }))
-        } else {
-            nodes
-        }
+    val groups = remember(nodes, sortByLatency) {
+        buildGroups(nodes, sortByLatency)
     }
 
     Column(
@@ -81,7 +78,7 @@ fun NodesScreen(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "共 ${nodes.size} 个节点 · 已选 ${nodes.count { it.id == selectedId }} 个",
+                    text = "共 ${nodes.size} 个节点 · ${groups.size} 个分组 · 收藏 ${nodes.count { it.isFavorite }} 个",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -116,11 +113,11 @@ fun NodesScreen(
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("测速中…")
+                    Text("探活中…")
                 } else {
                     Icon(Icons.Rounded.Bolt, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("一键测速")
+                    Text("一键探活")
                 }
             }
             FilledTonalButton(
@@ -145,7 +142,7 @@ fun NodesScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        if (displayed.isEmpty()) {
+        if (groups.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -182,18 +179,97 @@ fun NodesScreen(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(displayed, key = { it.id }) { node ->
-                    NodeItemCard(
-                        node = node,
-                        selected = node.id == selectedId,
-                        onClick = { onSelect(node) },
-                        onDelete = { onDelete(node.id) }
-                    )
+                groups.forEach { group ->
+                    item(key = "header-${group.title}") {
+                        NodeGroupHeader(title = group.title, count = group.nodes.size)
+                    }
+                    items(group.nodes, key = { it.id }) { node ->
+                        NodeItemCard(
+                            node = node,
+                            selected = node.id == selectedId,
+                            onClick = { onSelect(node) },
+                            onDelete = { onDelete(node.id) },
+                            onToggleFavorite = { onToggleFavorite(node) }
+                        )
+                    }
                 }
                 item {
                     Spacer(modifier = Modifier.height(28.dp))
                 }
             }
         }
+    }
+}
+
+/**
+ * 国家/地区分组。
+ */
+private data class NodeGroup(
+    val title: String,
+    val nodes: List<ProxyNode>
+)
+
+/**
+ * 构建分组：收藏组固定置顶，其余按国家中文名排序，未知地区放最后。
+ */
+private fun buildGroups(nodes: List<ProxyNode>, sortByLatency: Boolean): List<NodeGroup> {
+    if (nodes.isEmpty()) return emptyList()
+
+    fun sorted(list: List<ProxyNode>): List<ProxyNode> = if (sortByLatency) {
+        list.sortedWith(
+            compareBy(
+                { if (it.latencyMs < 0) Int.MAX_VALUE else it.latencyMs },
+                { it.name }
+            )
+        )
+    } else {
+        list.sortedWith(compareByDescending<ProxyNode> { it.healthScore }.thenBy { it.name })
+    }
+
+    val groups = mutableListOf<NodeGroup>()
+    val favorites = nodes.filter { it.isFavorite }
+    if (favorites.isNotEmpty()) {
+        groups += NodeGroup("⭐ 我的收藏", sorted(favorites))
+    }
+
+    nodes.filterNot { it.isFavorite }
+        .groupBy { it.countryCode to it.countryNameCn }
+        .entries
+        .sortedWith(
+            compareBy(
+                { it.key.first == "UN" },
+                { it.key.second }
+            )
+        )
+        .forEach { (key, list) ->
+            val title = "${ProxyNode.countryFlag(key.first)} ${key.second}"
+            groups += NodeGroup(title, sorted(list))
+        }
+    return groups
+}
+
+/**
+ * 分组标题。
+ */
+@Composable
+private fun NodeGroupHeader(title: String, count: Int) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 6.dp, bottom = 2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = "($count)",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }

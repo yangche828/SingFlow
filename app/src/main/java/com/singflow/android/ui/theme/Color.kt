@@ -55,3 +55,15 @@ fun latencyColor(latencyMs: Int): Color {
         else -> SignalRed
     }
 }
+
+/**
+ * 根据健康分返回状态色。
+ */
+fun healthColor(score: Int): Color {
+    return when {
+        score >= 85 -> SignalGreen
+        score >= 70 -> AuroraCyan
+        score >= 50 -> SignalAmber
+        else -> SignalRed
+    }
+}

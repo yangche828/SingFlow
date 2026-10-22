@@ -251,3 +251,39 @@ zipalign -c -P 16                  → Verification successful；资源仅保留
 3. **UI**：节点页国家分组折叠、健康分徽章、收藏置顶/批量探活/测地区；设置页默认国家、应用级国家分流器、四大预设与七项参数面板；主页当前国家与健康度。
 4. **稳定性/省电**：物理网络切换重绑（`setUnderlyingNetworks`）、`Mutex` 内核生命周期互斥、`PowerStateController` 三级功耗状态机、`AtomicFile` 配置写入。
 5. **订阅/导出/备份**：订阅自动更新 Worker、精选节点导出/二维码、本地加密备份与 WebDAV。
+
+### R2：探活引擎、故障切换执行器、三级省电状态机与节点分组 UI（已完成）
+
+| 模块 | 交付内容 | 验证 |
+| :--- | :--- | :--- |
+| 落地识别 | `EgressTraceParser` 解析 Cloudflare `cdn-cgi/trace` 与 `api.ip.sb/geoip`；`CountryNames` 覆盖 40+ 国家代码；不触发 DNS 的 IPv4/IPv6 字面量校验 | `EgressTraceParserTest` 7/7 |
+| 探活器 | `NodeProber` 接口；`MixedProxyNodeProber` 经本地 mixed 入站做真实 HTTP（顺带落地国家）；`ClashApiNodeProber` 经 `/proxies/{tag}/delay` 在不切换出站的情况下测 RTT | 运行时实测 `delay=209ms` |
+| Clash API | `ClashApiClient`：`/version`、`/delay`、`PUT /proxies/{group}` Selector 切换、读取当前成员；统一超时与 JSON 解析 | 运行时 `PUT` 组切换可用 |
+| 批量探活 | `BatchProbeEngine`：12 并发信号量、逐节点写回健康度、进度回调、空输入安全 | `BatchProbeEngineTest` 3/3 |
+| 故障切换 | `FailoverController`：带重试当前节点探活 → 本机断网甄别 → 扣分/冷却 → 前三候选逐个实测确认 → Selector 内存切换；四大预设与迟滞门槛全部生效 | `FailoverControllerTest` 9/9 |
+| 端口抽象 | `NodeStore`/`RepositoryNodeStore`、`OutboundSwitcher`/`ClashApiOutboundSwitcher`、`LocalNetworkVerifier`/`AndroidLocalNetworkVerifier`，便于 JVM 测试 | 编译通过 |
+| 省电状态机 | `PowerStateController`：L1 前台 / L2 后台亮屏 / L3 息屏 15 秒后深度休眠；省电模式立即 L3；亮屏取消待执行 L3 | `PowerStateControllerTest` 5/5 |
+| UI | 节点页按「收藏 → 国家/地区」自动分组，卡片显示旗帜、健康分徽章与实测延迟，支持收藏置顶；设置页新增「多节点国家分组」开关、四大预设单选与默认国家选择器 | API 33 模拟器实测截图 |
+| 集成 | `MainViewModel` 自适应单/多节点配置；多节点 + 已连接时「一键探活」改走 Clash API 真实 RTT；`AppSettings.countryRoutingEnabled` 默认关闭（验证期 opt-in） | 见下方运行时验收 |
+
+**运行时验收（API 33 模拟器 / 4 节点 JP+US+SG+VLESS 回环）**
+
+```text
+多节点国家分组开关开启 → 连接成功（UI「已保护」）
+tun0: 172.19.0.1/30, mtu 9000
+Clash API: proxy(Selector) / group-JP / group-SG / group-US / group-FAVORITES / group-GLOBAL 全部生成
+经 mixed(7890) 访问 http://cp.cloudflare.com/generate_204 → HTTP 204（真实转发）
+/proxies/node-<loopback>/delay → {"delay":209}
+无 FATAL EXCEPTION / panic
+```
+
+证据：`acceptance/r2_multinode_runtime.log`、`acceptance/app_home_multinode_connected.png`、
+`acceptance/app_nodes_country_grouping.png`、`acceptance/app_nodes_favorite.png`、
+`acceptance/app_settings_failover.png`、`acceptance/app_settings_country_picker.png`。
+
+### 下一轮（R3）
+
+1. 将 `FailoverController` 挂到 `SingFlowVpnService`（仅多节点配置 + 已连接时启用），跑 API 33 回环断连自动切换实测。
+2. 应用级国家分流 UI（选择应用 → 国家/收藏/直连/阻断）与连接诊断面板。
+3. 七项切换参数滑块、`AtomicFile` 配置写入、`setUnderlyingNetworks` 物理网络重绑、内核生命周期 `Mutex`。
+4. 主页展示当前国家/健康度，省电状态机接入服务与 UI 采样。

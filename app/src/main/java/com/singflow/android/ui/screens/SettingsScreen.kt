@@ -31,6 +31,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -53,17 +54,24 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
 import com.singflow.android.core.model.AppSettings
+import com.singflow.android.core.model.FailoverPreset
 import com.singflow.android.core.model.PerAppMode
+import com.singflow.android.core.model.ProxyNode
 import com.singflow.android.ui.theme.SignalAmber
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * 设置页：DNS、TUN、IPv6、分应用代理与开机自启。
+ * 设置页：DNS、TUN、IPv6、分应用代理、故障自动切换与开机自启。
+ *
+ * @param settings 当前设置
+ * @param countries 节点库中实际存在的国家/地区（代码 to 中文名），用于默认国家选择
+ * @param onUpdate 保存设置
  */
 @Composable
 fun SettingsScreen(
     settings: AppSettings,
+    countries: List<Pair<String, String>> = emptyList(),
     onUpdate: (AppSettings) -> Unit
 ) {
     var remoteDns by remember(settings.remoteDns) { mutableStateOf(settings.remoteDns) }
@@ -71,6 +79,7 @@ fun SettingsScreen(
     var mtuText by remember(settings.tunMtu) { mutableStateOf(settings.tunMtu.toString()) }
     var portText by remember(settings.mixedPort) { mutableStateOf(settings.mixedPort.toString()) }
     var showAppPicker by remember { mutableStateOf(false) }
+    var showCountryPicker by remember { mutableStateOf(false) }
     var savedHint by remember { mutableStateOf<String?>(null) }
 
     Column(
@@ -188,6 +197,76 @@ fun SettingsScreen(
             }
         }
 
+        Spacer(modifier = Modifier.height(12.dp))
+
+        SettingsSection(title = "故障自动切换") {
+            SwitchRow(
+                title = "多节点国家分组",
+                subtitle = "把全部节点编译为按国家分组的出站组，需重新连接后生效",
+                checked = settings.countryRoutingEnabled,
+                onCheckedChange = { onUpdate(settings.copy(countryRoutingEnabled = it)) }
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            SwitchRow(
+                title = "启用自动切换",
+                subtitle = "节点断连时自动切往同国最高健康分节点，不重建 TUN",
+                checked = settings.failover.enabled,
+                onCheckedChange = {
+                    onUpdate(settings.copy(failover = settings.failover.copy(enabled = it)))
+                }
+            )
+            if (settings.failover.enabled) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "切换方向",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                FailoverPreset.entries.forEach { preset ->
+                    val selected = settings.failover.preset == preset
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                onUpdate(settings.copy(failover = settings.failover.copy(preset = preset)))
+                            }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = selected,
+                            onClick = {
+                                onUpdate(settings.copy(failover = settings.failover.copy(preset = preset)))
+                            }
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = preset.displayName, style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                text = preset.description,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                val countryCode = settings.failover.defaultCountryCode
+                val countryLabel = if (countryCode.isBlank()) {
+                    "智能选择（全局高分）"
+                } else {
+                    val name = countries.firstOrNull { it.first.equals(countryCode, ignoreCase = true) }?.second
+                        ?: countryCode
+                    "${ProxyNode.countryFlag(countryCode)} $name"
+                }
+                OutlinedButton(
+                    onClick = { showCountryPicker = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("默认国家：$countryLabel")
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(18.dp))
 
         Row(
@@ -251,7 +330,7 @@ fun SettingsScreen(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "版本 1.0.0 · 包名 com.singflow.android\n支持 Android 13 (API 33) – Android 17 (API 37)\n配置规范：sing-box 1.14+ / 1.15+",
+                    text = "版本 2.0.0 · 包名 com.singflow.android\n支持 Android 13 (API 33) – Android 17 (API 37)\n配置规范：sing-box 1.14+ / 1.15+",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -270,6 +349,71 @@ fun SettingsScreen(
                 showAppPicker = false
             }
         )
+    }
+
+    if (showCountryPicker) {
+        AlertDialog(
+            onDismissRequest = { showCountryPicker = false },
+            title = { Text("默认国家") },
+            text = {
+                LazyColumn(modifier = Modifier.heightIn(max = 360.dp)) {
+                    item(key = "auto") {
+                        CountryOptionRow(
+                            label = "智能选择（全局高分）",
+                            selected = settings.failover.defaultCountryCode.isBlank(),
+                            onClick = {
+                                onUpdate(
+                                    settings.copy(
+                                        failover = settings.failover.copy(defaultCountryCode = "")
+                                    )
+                                )
+                                showCountryPicker = false
+                            }
+                        )
+                    }
+                    items(countries, key = { it.first }) { (code, name) ->
+                        CountryOptionRow(
+                            label = "${ProxyNode.countryFlag(code)} $name",
+                            selected = settings.failover.defaultCountryCode.equals(code, ignoreCase = true),
+                            onClick = {
+                                onUpdate(
+                                    settings.copy(
+                                        failover = settings.failover.copy(defaultCountryCode = code)
+                                    )
+                                )
+                                showCountryPicker = false
+                            }
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showCountryPicker = false }) {
+                    Text("关闭")
+                }
+            }
+        )
+    }
+}
+
+/**
+ * 默认国家选项行。
+ */
+@Composable
+private fun CountryOptionRow(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        RadioButton(selected = selected, onClick = onClick)
+        Text(text = label, style = MaterialTheme.typography.bodyMedium)
     }
 }
 
