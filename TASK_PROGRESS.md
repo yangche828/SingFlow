@@ -802,3 +802,30 @@ rows=host/rule/↑↓bytes（chain=node-b090...）
 2. 分组拖拽手势（替代上/下按钮）。
 3. 订阅刷新 Worker 的端到端集成测试（MockWebServer）。
 4. 节点详情页延迟历史与连接列表联动（点击连接查看规则详情）。
+
+### R22：延迟历史持久化（已完成）
+
+| 模块 | 交付内容 | 验证 |
+| :--- | :--- | :--- |
+| 持久化 | 历史写入 `files/singflow/latency_history.txt`，每节点最多 40 条；启动时恢复 | 运行 |
+| 编码 | 纯文本 `nodeId|ts:lat;ts:lat`，`encodeHistory` / `decodeHistory` 可单测 | 3 个单测 |
+| 生命周期 | `SingFlowApp.onCreate()` 调用 `LatencyHistoryStore.attach()` | 代码 |
+| 清理 | `clear/clearAll` 同步重写文件；非法行解析时忽略 | 单测 |
+
+**运行时验收**：
+
+```text
+file=files/singflow/latency_history.txt
+content=b09051a0-...|1792702029423:3;1792702039472:4
+restart=force-stop 后重新打开应用
+chart=最近 2 次 · 最低 3 ms · 最高 4 ms（未连接状态）
+```
+
+证据：`acceptance/r22_latency_persisted.png`、`acceptance/r22_latency_persisted_runtime.log`。
+
+### 下一轮（R23）
+
+1. 断线空洞标记（失败采样在曲线中留空）。
+2. 分组拖拽手势（替代上/下按钮）。
+3. 订阅刷新 Worker 的端到端集成测试（MockWebServer）。
+4. 节点详情连接列表点击查看规则详情。

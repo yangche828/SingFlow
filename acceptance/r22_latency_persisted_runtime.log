@@ -1,0 +1,6 @@
+== R22 延迟历史落盘验收 ==
+file=files/singflow/latency_history.txt
+content=b09051a0-...|1792702029423:3;1792702039472:4
+restart=force-stop 后重新打开应用
+chart=最近 2 次 · 最低 3 ms · 最高 4 ms（未连接状态）
+screenshot=acceptance/r22_latency_persisted.png

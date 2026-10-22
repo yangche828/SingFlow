@@ -2,6 +2,7 @@ package com.singflow.android
 
 import android.app.Application
 import android.util.Log
+import com.singflow.android.core.probe.LatencyHistoryStore
 import com.singflow.android.core.subscription.SubscriptionWorkScheduler
 import dagger.hilt.android.HiltAndroidApp
 import java.io.File
@@ -27,6 +28,7 @@ class SingFlowApp : Application() {
         prepareWorkingDirectories()
         installRuleSets()
         installCrashHandler()
+        LatencyHistoryStore.attach(File(filesDir, "singflow"))
         SubscriptionWorkScheduler.schedule(this)
     }
 

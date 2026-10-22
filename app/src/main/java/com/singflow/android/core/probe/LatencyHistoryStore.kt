@@ -1,5 +1,6 @@
 package com.singflow.android.core.probe
 
+import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -14,17 +15,38 @@ data class LatencySample(
 )
 
 /**
- * 进程内节点延迟历史环形缓冲。
+ * 节点延迟历史环形缓冲。
  *
- * 仅保留最近 [MAX_SAMPLES] 次成功采样，用于诊断页绘制趋势；
- * 不落盘，避免长期运行无限增长。
+ * 每个节点保留最近 [MAX_SAMPLES] 次成功采样；内存 + 可选文件持久化，
+ * 重启后可继续绘制趋势，同时限制磁盘增长。
  */
 object LatencyHistoryStore {
 
     /** 每个节点保留的最大采样数。 */
     const val MAX_SAMPLES = 40
 
+    private const val FILE_NAME = "latency_history.txt"
+
     private val history = ConcurrentHashMap<String, ArrayDeque<LatencySample>>()
+    private var storageFile: File? = null
+
+    /**
+     * 绑定持久化文件并恢复历史。
+     *
+     * @param directory 应用私有目录（不存在时自动创建）
+     */
+    @Synchronized
+    fun attach(directory: File) {
+        if (!directory.exists()) directory.mkdirs()
+        val file = File(directory, FILE_NAME)
+        storageFile = file
+        if (!file.exists()) return
+        val decoded = runCatching { decodeHistory(file.readText(Charsets.UTF_8)) }.getOrDefault(emptyMap())
+        history.clear()
+        decoded.forEach { (nodeId, samples) ->
+            history[nodeId] = ArrayDeque(samples.takeLast(MAX_SAMPLES))
+        }
+    }
 
     /**
      * 记录一次成功延迟；非正延迟忽略。
@@ -37,6 +59,7 @@ object LatencyHistoryStore {
         while (deque.size > MAX_SAMPLES) {
             deque.removeFirst()
         }
+        persist()
     }
 
     /** 读取节点延迟历史（时间正序）。 */
@@ -50,11 +73,58 @@ object LatencyHistoryStore {
     @Synchronized
     fun clear(nodeId: String) {
         history.remove(nodeId)
+        persist()
     }
 
     /** 清空全部历史（测试/断开连接时使用）。 */
     @Synchronized
     fun clearAll() {
         history.clear()
+        persist()
     }
+
+    private fun persist() {
+        val file = storageFile ?: return
+        runCatching {
+            file.writeText(encodeHistory(history), Charsets.UTF_8)
+        }
+    }
+}
+
+/**
+ * 编码延迟历史为文本：每行 `nodeId|ts:lat;ts:lat`。
+ */
+internal fun encodeHistory(history: Map<String, ArrayDeque<LatencySample>>): String {
+    return history.entries.joinToString("\n") { (nodeId, samples) ->
+        val points = samples.joinToString(";") { "${it.timestampMs}:${it.latencyMs}" }
+        "$nodeId|$points"
+    }
+}
+
+/**
+ * 解析延迟历史文本；非法行忽略。
+ */
+internal fun decodeHistory(text: String): Map<String, List<LatencySample>> {
+    if (text.isBlank()) return emptyMap()
+    val result = LinkedHashMap<String, List<LatencySample>>()
+    text.lineSequence().forEach { line ->
+        val separator = line.indexOf('|')
+        if (separator <= 0) return@forEach
+        val nodeId = line.substring(0, separator)
+        val samples = line.substring(separator + 1)
+            .split(';')
+            .mapNotNull { point ->
+                val parts = point.split(':')
+                val timestamp = parts.getOrNull(0)?.toLongOrNull()
+                val latency = parts.getOrNull(1)?.toIntOrNull()
+                if (timestamp == null || latency == null || latency <= 0) {
+                    null
+                } else {
+                    LatencySample(timestamp, latency)
+                }
+            }
+            .takeLast(LatencyHistoryStore.MAX_SAMPLES)
+        if (samples.isNotEmpty()) result[nodeId] = samples
+    }
+    return result
 }
