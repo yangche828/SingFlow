@@ -1117,3 +1117,19 @@ restore=恢复完成：6 个节点、1 个订阅、1 条应用规则
 2. 订阅 Worker 全流程集成测试（Room + MockWebServer）。
 3. 精选节点导出为 sing-box JSON 文件（SAF）。
 4. 受信任 Wi-Fi（SSID）自动化策略。
+
+### R36：诊断报告导出为文件（已完成）
+
+| 模块 | 交付内容 | 验证 |
+| :--- | :--- | :--- |
+| 导出 | 诊断页新增「导出诊断报告」，通过 SAF 保存 `singflow-diagnostics.txt` | 编译 |
+| 内容 | 与复制/分享共用 `DiagnosticsReportBuilder`，已脱敏 | 既有单测 |
+| 反馈 | 成功/失败 Toast 提示 | 代码 |
+| 布局 | 保持 3 个操作图标（导出/复制/刷新），避免窄屏标题被挤压 | 代码 |
+
+### 下一轮（R37）
+
+1. 连接详情按域名加入分流规则。
+2. 订阅 Worker 全流程集成测试（Room + MockWebServer）。
+3. 精选节点导出为 sing-box JSON 文件（SAF）。
+4. 受信任 Wi-Fi（SSID）自动化策略。

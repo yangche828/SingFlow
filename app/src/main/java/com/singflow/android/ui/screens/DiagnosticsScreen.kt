@@ -1,6 +1,7 @@
 package com.singflow.android.ui.screens
 
-import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,8 +19,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -82,6 +83,21 @@ fun DiagnosticsScreen(
         chainHits = state.chainHits,
         latencyHistory = state.latencyHistory
     )
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/plain")
+    ) { uri ->
+        if (uri != null) {
+            runCatching {
+                context.contentResolver.openOutputStream(uri)?.use { output ->
+                    output.write(reportText.toByteArray(Charsets.UTF_8))
+                } ?: error("无法写入文件")
+            }.onSuccess {
+                Toast.makeText(context, "诊断报告已导出", Toast.LENGTH_SHORT).show()
+            }.onFailure {
+                Toast.makeText(context, "导出失败：${it.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
     val problemNodes = remember(allNodes) {
         allNodes.filter { it.consecutiveFailures > 0 || it.isCoolingDown() }
             .sortedWith(
@@ -120,6 +136,9 @@ fun DiagnosticsScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+            IconButton(onClick = { exportLauncher.launch("singflow-diagnostics.txt") }) {
+                Icon(Icons.Rounded.FileDownload, contentDescription = "导出诊断报告")
+            }
             IconButton(
                 onClick = {
                     clipboard.setText(AnnotatedString(reportText))
@@ -127,18 +146,6 @@ fun DiagnosticsScreen(
                 }
             ) {
                 Icon(Icons.Rounded.ContentCopy, contentDescription = "复制诊断报告")
-            }
-            IconButton(
-                onClick = {
-                    val intent = Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_TEXT, reportText)
-                        putExtra(Intent.EXTRA_SUBJECT, "SingFlow 诊断报告")
-                    }
-                    context.startActivity(Intent.createChooser(intent, "分享诊断报告"))
-                }
-            ) {
-                Icon(Icons.Rounded.Share, contentDescription = "分享诊断报告")
             }
             IconButton(onClick = { diagnosticsViewModel.refresh() }) {
                 Icon(Icons.Rounded.Refresh, contentDescription = "刷新")
