@@ -112,6 +112,8 @@ fun SettingsScreen(
     var savedHint by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     var pendingWifiAdd by remember { mutableStateOf(false) }
+    var showAddSsidDialog by remember { mutableStateOf(false) }
+    var manualSsid by remember { mutableStateOf("") }
 
     fun addCurrentWifi() {
         val ssid = TrustedWifi.currentSsid(context)
@@ -136,6 +138,41 @@ fun SettingsScreen(
         } else if (!granted) {
             Toast.makeText(context, "需要定位权限才能读取 Wi-Fi 名称", Toast.LENGTH_LONG).show()
         }
+    }
+
+    if (showAddSsidDialog) {
+        AlertDialog(
+            onDismissRequest = { showAddSsidDialog = false },
+            title = { Text("手动添加受信任 Wi-Fi") },
+            text = {
+                OutlinedTextField(
+                    value = manualSsid,
+                    onValueChange = { manualSsid = it },
+                    label = { Text("Wi-Fi 名称（SSID）") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val ssid = manualSsid.trim()
+                        if (ssid.isNotBlank()) {
+                            onUpdate(
+                                settings.copy(
+                                    trustedWifiSsids = (settings.trustedWifiSsids + ssid).distinct()
+                                )
+                            )
+                            manualSsid = ""
+                            showAddSsidDialog = false
+                        }
+                    }
+                ) { Text("添加") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddSsidDialog = false }) { Text("取消") }
+            }
+        )
     }
 
     Column(
@@ -283,6 +320,9 @@ fun SettingsScreen(
                         }
                     ) {
                         Text("添加当前 Wi-Fi")
+                    }
+                    OutlinedButton(onClick = { showAddSsidDialog = true }) {
+                        Text("手动输入")
                     }
                     if (settings.trustedWifiSsids.isNotEmpty()) {
                         TextButton(
