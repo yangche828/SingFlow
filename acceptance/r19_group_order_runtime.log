@@ -1,0 +1,7 @@
+== R19 分组排序验收 ==
+entry=节点页更多菜单 → 分组排序
+initial=CN, US, UN
+action=US 上移一位并保存
+persisted=countryGroupOrder=["US","CN","UN"]
+result=节点页国家组顺序变为 US → CN → UN（收藏组仍置顶）
+screenshots=acceptance/r19_group_order.png, acceptance/r19_group_order_after.png

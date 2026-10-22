@@ -195,7 +195,11 @@ fun SingFlowRoot(viewModel: MainViewModel) {
                     canScanGeoIp = vpnState.isConnected &&
                         settings.countryRoutingEnabled &&
                         nodes.size > 1,
-                    onScanGeoIp = viewModel::scanGeoIp
+                    onScanGeoIp = viewModel::scanGeoIp,
+                    countryGroupOrder = settings.countryGroupOrder,
+                    onCountryGroupOrderChange = { order ->
+                        viewModel.updateSettings { it.copy(countryGroupOrder = order) }
+                    }
                 )
             }
             composable("logs") {

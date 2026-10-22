@@ -68,7 +68,8 @@ data class AppSettings(
     val antiBlocking: AntiBlockingConfig = AntiBlockingConfig.DEFAULT,
     val webdavUrl: String = "",
     val webdavUsername: String = "",
-    val webdavPasswordCipher: String = ""
+    val webdavPasswordCipher: String = "",
+    val countryGroupOrder: List<String> = emptyList()
 ) {
     companion object {
         val DEFAULT = AppSettings()

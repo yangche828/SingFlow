@@ -9,11 +9,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
@@ -24,11 +26,16 @@ import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.Done
 import androidx.compose.material.icons.rounded.Inbox
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material.icons.rounded.Sort
+import androidx.compose.material.icons.rounded.ArrowDownward
+import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -70,17 +77,21 @@ fun NodesScreen(
     onBatchFavorite: (Set<String>, Boolean) -> Unit = { _, _ -> },
     geoScanning: Boolean = false,
     canScanGeoIp: Boolean = false,
-    onScanGeoIp: () -> Unit = {}
+    onScanGeoIp: () -> Unit = {},
+    countryGroupOrder: List<String> = emptyList(),
+    onCountryGroupOrderChange: (List<String>) -> Unit = {}
 ) {
     var sortByLatency by remember { mutableStateOf(false) }
     var selectionMode by remember { mutableStateOf(false) }
     var selectedIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var confirmBatchDelete by remember { mutableStateOf(false) }
     var confirmGeoScan by remember { mutableStateOf(false) }
+    var showGroupOrder by remember { mutableStateOf(false) }
+    var showNodeMenu by remember { mutableStateOf(false) }
     var batchHint by remember { mutableStateOf<String?>(null) }
     val clipboard = LocalClipboardManager.current
-    val groups = remember(nodes, sortByLatency) {
-        buildGroups(nodes, sortByLatency)
+    val groups = remember(nodes, sortByLatency, countryGroupOrder) {
+        buildGroups(nodes, sortByLatency, countryGroupOrder)
     }
 
     LaunchedEffect(nodes) {
@@ -126,12 +137,29 @@ fun NodesScreen(
                 IconButton(onClick = onImportClick) {
                     Icon(Icons.Rounded.Add, contentDescription = "导入节点")
                 }
-                IconButton(onClick = onClearAll) {
-                    Icon(
-                        Icons.Rounded.DeleteSweep,
-                        contentDescription = "清空节点",
-                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
-                    )
+                Box {
+                    IconButton(onClick = { showNodeMenu = true }) {
+                        Icon(Icons.Rounded.MoreVert, contentDescription = "更多操作")
+                    }
+                    DropdownMenu(
+                        expanded = showNodeMenu,
+                        onDismissRequest = { showNodeMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("分组排序") },
+                            onClick = {
+                                showNodeMenu = false
+                                showGroupOrder = true
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("清空全部节点") },
+                            onClick = {
+                                showNodeMenu = false
+                                onClearAll()
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -398,20 +426,38 @@ fun NodesScreen(
             }
         )
     }
+
+    if (showGroupOrder) {
+        GroupOrderDialog(
+            groups = groups.filter { it.countryCode.isNotBlank() }
+                .map { it.countryCode to it.title },
+            onDismiss = { showGroupOrder = false },
+            onSave = { order ->
+                onCountryGroupOrderChange(order)
+                showGroupOrder = false
+                batchHint = "分组顺序已保存"
+            }
+        )
+    }
 }
 
 /**
  * 国家/地区分组。
  */
-private data class NodeGroup(
+internal data class NodeGroup(
     val title: String,
-    val nodes: List<ProxyNode>
+    val nodes: List<ProxyNode>,
+    val countryCode: String = ""
 )
 
 /**
- * 构建分组：收藏组固定置顶，其余按国家中文名排序，未知地区放最后。
+ * 构建分组：收藏组固定置顶，国家组按用户自定义顺序，未排序的按中文名，未知地区放最后。
  */
-private fun buildGroups(nodes: List<ProxyNode>, sortByLatency: Boolean): List<NodeGroup> {
+internal fun buildGroups(
+    nodes: List<ProxyNode>,
+    sortByLatency: Boolean,
+    countryOrder: List<String> = emptyList()
+): List<NodeGroup> {
     if (nodes.isEmpty()) return emptyList()
 
     fun sorted(list: List<ProxyNode>): List<ProxyNode> = if (sortByLatency) {
@@ -428,23 +474,117 @@ private fun buildGroups(nodes: List<ProxyNode>, sortByLatency: Boolean): List<No
     val groups = mutableListOf<NodeGroup>()
     val favorites = nodes.filter { it.isFavorite }
     if (favorites.isNotEmpty()) {
-        groups += NodeGroup("⭐ 我的收藏", sorted(favorites))
-    }
+        groups += NodeGroup("⭐ 我的收藏", sorted(favorites))    }
 
     nodes.filterNot { it.isFavorite }
         .groupBy { it.countryCode to it.countryNameCn }
         .entries
         .sortedWith(
             compareBy(
-                { it.key.first == "UN" },
+                { entry ->
+                    countryOrder.indexOfFirst { it.equals(entry.key.first, ignoreCase = true) }
+                        .takeIf { it >= 0 } ?: Int.MAX_VALUE
+                },
+                { entry ->
+                    val ordered = countryOrder.any { it.equals(entry.key.first, ignoreCase = true) }
+                    when {
+                        ordered -> 0
+                        entry.key.first == "UN" -> 2
+                        else -> 1
+                    }
+                },
                 { it.key.second }
             )
         )
         .forEach { (key, list) ->
             val title = "${ProxyNode.countryFlag(key.first)} ${key.second}"
-            groups += NodeGroup(title, sorted(list))
+            groups += NodeGroup(title, sorted(list), key.first)
         }
     return groups
+}
+
+/**
+ * 分组顺序对话框：上/下移动，保存后持久化到设置。
+ */
+@Composable
+private fun GroupOrderDialog(
+    groups: List<Pair<String, String>>,
+    onDismiss: () -> Unit,
+    onSave: (List<String>) -> Unit
+) {
+    val labels = remember(groups) { groups.toMap() }
+    var order by remember(groups) { mutableStateOf(groups.map { it.first }) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("分组排序") },
+        text = {
+            if (order.isEmpty()) {
+                Text(
+                    text = "暂无国家分组",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                LazyColumn(modifier = Modifier.heightIn(max = 420.dp)) {
+                    itemsIndexed(order, key = { _, code -> code }) { index, code ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = labels[code] ?: code,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f)
+                            )
+                            IconButton(
+                                onClick = {
+                                    if (index > 0) {
+                                        order = order.toMutableList().apply {
+                                            add(index - 1, removeAt(index))
+                                        }
+                                    }
+                                },
+                                enabled = index > 0,
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    Icons.Rounded.ArrowUpward,
+                                    contentDescription = "上移",
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            IconButton(
+                                onClick = {
+                                    if (index < order.lastIndex) {
+                                        order = order.toMutableList().apply {
+                                            add(index + 1, removeAt(index))
+                                        }
+                                    }
+                                },
+                                enabled = index < order.lastIndex,
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    Icons.Rounded.ArrowDownward,
+                                    contentDescription = "下移",
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onSave(order) }) { Text("保存") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
+        }
+    )
 }
 
 /**
