@@ -947,3 +947,29 @@ connection_dialog=复制域名 / 关闭
 2. 连接详情按域名加入分流规则。
 3. 订阅 Worker 全流程集成测试（Room + MockWebServer）。
 4. 节点详情显示“复制域名”成功提示。
+
+### R28：诊断报告一键复制（已完成）
+
+| 模块 | 交付内容 | 验证 |
+| :--- | :--- | :--- |
+| 构建器 | `DiagnosticsReportBuilder`：输出时间、VPN 状态、当前节点、Clash 可用性、节点/异常数、代理组、规则/出站链命中、延迟历史 | 2 个单测 |
+| 脱敏 | 仅展示节点名与统计，不包含 UUID/密码/分享链接 | 单测断言 |
+| UI | 诊断页右上角复制按钮，复制后 Toast「诊断报告已复制」 | 截图 |
+| 空态 | 无连接/无历史时输出可读占位说明 | 单测 |
+
+**运行时验收**：
+
+```text
+action=诊断页右上角复制图标
+toast=诊断报告已复制
+clipboard_preview=SingFlow 诊断报告 / 时间 / VPN / 节点 / 规则命中
+```
+
+证据：`acceptance/r28_diagnostics_report.png`、`acceptance/r28_diagnostics_report_runtime.log`。
+
+### 下一轮（R29）
+
+1. 分组拖拽手势（替代上/下按钮）。
+2. 连接详情按域名加入分流规则。
+3. 订阅 Worker 全流程集成测试（Room + MockWebServer）。
+4. 诊断报告导出为文件/分享。

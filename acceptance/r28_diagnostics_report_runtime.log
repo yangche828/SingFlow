@@ -1,0 +1,6 @@
+== R28 诊断报告复制验收 ==
+action=诊断页右上角复制图标
+toast=诊断报告已复制
+clipboard_preview=SingFlow 诊断报告 / 时间 / VPN / 节点 / 规则命中
+report_excludes=UUID/密码等凭据
+screenshot=acceptance/r28_diagnostics_report.png

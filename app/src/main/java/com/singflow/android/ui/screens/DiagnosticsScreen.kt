@@ -1,5 +1,6 @@
 package com.singflow.android.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -15,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -29,6 +31,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -39,6 +44,7 @@ import com.singflow.android.core.model.VpnState
 import com.singflow.android.core.probe.ClashConnection
 import com.singflow.android.core.probe.ClashProxyGroup
 import com.singflow.android.core.probe.LatencySample
+import com.singflow.android.ui.DiagnosticsReportBuilder
 import com.singflow.android.ui.components.LatencySparkline
 import com.singflow.android.ui.theme.healthColor
 import com.singflow.android.ui.DiagnosticsViewModel
@@ -62,6 +68,8 @@ fun DiagnosticsScreen(
     diagnosticsViewModel: DiagnosticsViewModel = hiltViewModel()
 ) {
     val state by diagnosticsViewModel.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
     val problemNodes = remember(allNodes) {
         allNodes.filter { it.consecutiveFailures > 0 || it.isCoolingDown() }
             .sortedWith(
@@ -99,6 +107,24 @@ fun DiagnosticsScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+            IconButton(
+                onClick = {
+                    val report = DiagnosticsReportBuilder.build(
+                        vpnState = vpnState,
+                        selectedNode = selectedNode,
+                        allNodes = allNodes,
+                        available = state.available,
+                        groups = state.groups,
+                        ruleHits = state.ruleHits,
+                        chainHits = state.chainHits,
+                        latencyHistory = state.latencyHistory
+                    )
+                    clipboard.setText(AnnotatedString(report))
+                    Toast.makeText(context, "诊断报告已复制", Toast.LENGTH_SHORT).show()
+                }
+            ) {
+                Icon(Icons.Rounded.ContentCopy, contentDescription = "复制诊断报告")
             }
             IconButton(onClick = { diagnosticsViewModel.refresh() }) {
                 Icon(Icons.Rounded.Refresh, contentDescription = "刷新")
