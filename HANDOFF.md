@@ -85,7 +85,7 @@
 | `app/src/main/java/com/singflow/android/SingFlowApp.kt` | `installRuleSets()`、`ruleSetDir` | 按 `BuildConfig.VERSION_CODE` 打 `.version` 标记 |
 | `app/src/test/java/com/singflow/android/core/config/SingBoxConfigPipelineTest.kt` | 31 个单测（含 `gvisor` / `direct` 断言） | 改拦截器后同步断言 |
 | `app/src/main/java/com/singflow/android/ui/screens/SettingsScreen.kt` | DNS/MTU/Mixed 端口编辑 | 模拟器改 remoteDns 走这里 |
-| `app/libs/libbox.aar` | 原生库（7 entries） | 不要提交到公开仓库（GPLv3） |
+| `app/libs/libbox.aar` | 原生库（7 entries，56 MB） | 已入库；仓库公开时须履行 GPLv3 源码义务 |
 | `app/build/outputs/apk/debug/app-debug.apk` | 最新 APK（约 219.7 MB） | 含双 ABI `.so` |
 | `scripts/dev/vless-loopback-server.js` | 本地 VLESS 回环测试服务端（TCP + UDP/XUDP，默认 8443） | 可复现验收的必备件；`node scripts/dev/vless-loopback-server.js --port 8443` |
 | `scripts/e2e_adb_verify.ps1` | 主验收脚本（Windows/pwsh） | 设备自启、UI 自动化、真实转发断言；运行中可安全编辑 |

@@ -23,9 +23,9 @@ Android 13~17（API 33~37）上的 sing-box 客户端：Jetpack Compose UI + sin
 前置条件：
 
 1. JDK 21、Android SDK（`compileSdk` 取本机已安装最高平台）、Node.js（仅验收脚本需要）。
-2. **`app/libs/libbox.aar`**：本仓库不提交该文件（体积 + GPLv3）。从
-   [`yangche828/singflow-libbox`](https://github.com/yangche828/singflow-libbox) 的 Release `libbox-v1.14.3` 下载后放到 `app/libs/libbox.aar`；
-   或用本仓库 `.github/workflows/build-libbox.yml` 自行构建（Go + gomobile + NDK，含 16 KB 页对齐断言）。
+2. **`app/libs/libbox.aar`**：已随仓库提供（56 MB，sing-box v1.14.3，ABI `arm64-v8a` + `x86_64`），clone 后直接构建，无需额外下载。
+   如需自行重建，用 `.github/workflows/build-libbox.yml`（Go + gomobile + NDK，含 16 KB 页对齐断言），
+   上游产物同源：[`yangche828/singflow-libbox`](https://github.com/yangche828/singflow-libbox) Release `libbox-v1.14.3`。
 3. `local.properties` 写入 `sdk.dir=<Android SDK 路径>`。
 
 ```bash
@@ -76,4 +76,4 @@ app/src/main/java/com/singflow/android/
 ## 许可
 
 本项目依赖 sing-box 的 `libbox`（GPLv3）。**对外分发含 `libbox.aar` 的 APK 时须同时提供对应源码**；
-`libbox.aar` 与构建产物不入库。
+`libbox.aar` 已入库（上游源码即 sing-box，见 https://github.com/SagerNet/sing-box ）；构建产物（`build/`、APK）不入库。
