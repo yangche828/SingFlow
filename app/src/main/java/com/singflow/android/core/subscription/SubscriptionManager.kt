@@ -96,11 +96,10 @@ class SubscriptionManager(
                 )
             }
 
-            val keepHashes = parsed.nodes.map { it.configHash }.toSet()
             val existing = nodeRepository.getByGroup(entity.id)
-            val stale = existing.filter { it.configHash !in keepHashes }
-            if (stale.isNotEmpty()) {
-                nodeRepository.deleteAll(stale.map { it.id })
+            val diff = SubscriptionNodeDiffCalculator.diff(existing, parsed.nodes)
+            if (diff.removed.isNotEmpty()) {
+                nodeRepository.deleteAll(diff.removed.map { it.id })
             }
             nodeRepository.saveAllPreservingStats(parsed.nodes)
 
@@ -118,10 +117,10 @@ class SubscriptionManager(
             dao.upsert(updated)
             SubscriptionRefreshResult(
                 success = true,
-                message = "已更新 ${parsed.nodes.size} 个节点" +
-                    if (stale.isEmpty()) "" else "，移除 ${stale.size} 个失效节点",
+                message = "订阅已更新：新增 ${diff.added.size} 个、保留 ${diff.retained.size} 个" +
+                    if (diff.removed.isEmpty()) "" else "、移除 ${diff.removed.size} 个失效节点",
                 imported = parsed.nodes.size,
-                removed = stale.size,
+                removed = diff.removed.size,
                 subscription = updated
             )
         } catch (error: Exception) {
