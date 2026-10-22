@@ -3,6 +3,7 @@ package com.singflow.android.ui.screens
 import android.content.Intent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -55,6 +56,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.singflow.android.core.export.QrCodeGenerator
 import com.singflow.android.core.model.ProxyNode
+import com.singflow.android.core.probe.ClashConnection
 import com.singflow.android.core.probe.LatencyHistoryStore
 import com.singflow.android.ui.NodeDetailViewModel
 import com.singflow.android.ui.components.LatencySparkline
@@ -90,6 +92,7 @@ fun NodeDetailScreen(
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
     var confirmDelete by remember { mutableStateOf(false) }
+    var selectedConnection by remember { mutableStateOf<ClashConnection?>(null) }
     val detailState by nodeDetailViewModel.state.collectAsStateWithLifecycle()
 
     if (node == null) {
@@ -191,6 +194,15 @@ fun NodeDetailScreen(
                 InfoLine("探测成功", "${node.probeSuccessCount}/${node.probeTotalCount}")
                 InfoLine("EMA / 抖动", "${node.emaLatencyMs.toInt()} ms / ${node.latencyJitterMs.toInt()} ms")
                 InfoLine("最近探测", formatTime(node.lastProbeTimeMs))
+                if (node.consecutiveFailures > 0) {
+                    InfoLine("连续失败", "${node.consecutiveFailures} 次")
+                }
+                if (node.cooldownUntilMs > 0L) {
+                    InfoLine(
+                        "熔断状态",
+                        if (node.isCoolingDown()) "冷却至 ${formatTime(node.cooldownUntilMs)}" else "已恢复"
+                    )
+                }
                 if (node.egressIp != null) {
                     InfoLine("实测出口", "${node.egressIp}（${node.countryNameCn}）")
                 }
@@ -257,7 +269,7 @@ fun NodeDetailScreen(
             )
             else -> {
                 detailState.connections.forEach { connection ->
-                    ConnectionRow(connection)
+                    ConnectionRow(connection) { selectedConnection = connection }
                 }
             }
         }
@@ -356,14 +368,36 @@ fun NodeDetailScreen(
             }
         )
     }
+
+    selectedConnection?.let { connection ->
+        AlertDialog(
+            onDismissRequest = { selectedConnection = null },
+            title = { Text("连接详情") },
+            text = {
+                Column {
+                    InfoLine("目标", connection.destination)
+                    InfoLine("网络", connection.network.ifBlank { "未知" })
+                    InfoLine("命中规则", connection.rule.ifBlank { "未命中规则" })
+                    InfoLine("出站链", connection.chainText)
+                    InfoLine("上传", formatBytes(connection.upload))
+                    InfoLine("下载", formatBytes(connection.download))
+                    InfoLine("连接 ID", connection.id)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { selectedConnection = null }) { Text("关闭") }
+            }
+        )
+    }
 }
 
 @Composable
-private fun ConnectionRow(connection: com.singflow.android.core.probe.ClashConnection) {
+private fun ConnectionRow(connection: ClashConnection, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .clickable(onClick = onClick)
+            .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {

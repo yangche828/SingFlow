@@ -1,0 +1,6 @@
+== R24 连接详情与熔断展示验收 ==
+entry=节点详情 → 该节点连接 → 点击任意连接
+dialog=目标/网络/命中规则/出站链/上传/下载/连接 ID
+example=www.googleapis.com:443 tcp final node-b090... → proxy
+failure_fields=连续失败/熔断状态（有值时显示）
+screenshot=acceptance/r24_connection_detail.png
