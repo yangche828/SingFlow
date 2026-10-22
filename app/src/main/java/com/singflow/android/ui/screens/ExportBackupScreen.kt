@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.singflow.android.core.export.QrCodeGenerator
+import com.singflow.android.core.export.SelectedNodeExporter
 import com.singflow.android.core.backup.BackupCipher
 import com.singflow.android.core.model.ProxyNode
 import com.singflow.android.ui.BackupViewModel
@@ -303,6 +304,56 @@ fun ExportBackupScreen(
                 Icon(Icons.Rounded.Share, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(6.dp))
                 Text("分享全部")
+            }
+        }
+
+        Spacer(modifier = Modifier.height(18.dp))
+        Text(
+            text = "精选节点导出",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = "把收藏节点或健康分 ≥ ${SelectedNodeExporter.HIGH_HEALTH_THRESHOLD} 的节点生成 Base64 订阅文本，可直接粘贴到备用设备。",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        val favoritePool = SelectedNodeExporter.select(nodes, favoritesOnly = true)
+        val highScorePool = SelectedNodeExporter.select(
+            nodes,
+            favoritesOnly = false,
+            minHealth = SelectedNodeExporter.HIGH_HEALTH_THRESHOLD
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = {
+                    val encoded = SelectedNodeExporter.toSubscription(favoritePool)
+                    if (encoded.isBlank()) {
+                        backupViewModel.notify("没有可导出的收藏节点")
+                    } else {
+                        clipboard.setText(AnnotatedString(encoded))
+                        backupViewModel.notify("已复制收藏订阅（${favoritePool.size} 个节点）")
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("收藏订阅（${favoritePool.size}）")
+            }
+            Button(
+                onClick = {
+                    val encoded = SelectedNodeExporter.toSubscription(highScorePool)
+                    if (encoded.isBlank()) {
+                        backupViewModel.notify("没有健康分 ≥ ${SelectedNodeExporter.HIGH_HEALTH_THRESHOLD} 的节点")
+                    } else {
+                        clipboard.setText(AnnotatedString(encoded))
+                        backupViewModel.notify("已复制高分订阅（${highScorePool.size} 个节点）")
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("高分订阅（${highScorePool.size}）")
             }
         }
 

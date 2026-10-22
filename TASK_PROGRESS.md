@@ -998,3 +998,29 @@ after=暂无历史采样；files/singflow/latency_history.txt 为空
 2. 连接详情按域名加入分流规则。
 3. 订阅 Worker 全流程集成测试（Room + MockWebServer）。
 4. 诊断报告导出为文件（SAF）。
+
+### R30：精选节点池导出（已完成）
+
+| 模块 | 交付内容 | 验证 |
+| :--- | :--- | :--- |
+| 导出器 | `SelectedNodeExporter`：筛选收藏或健康分 ≥80 且有分享链接的节点 | 3 个单测 |
+| 格式 | 换行分享链接 + 标准 Base64 订阅文本，可跨设备粘贴导入 | 单测 |
+| UI | 导出与备份页新增「精选节点导出」，显示收藏/高分数量并复制 Base64 | 截图 |
+| 空态 | 无可导出节点时提示，不写空剪贴板 | 代码 |
+
+**运行时验收**：
+
+```text
+favorites=收藏订阅（2 个）
+high_score=高分订阅（0 个）
+clipboard_preview=Base64 dmxlc3M6...（vless:// 链接）
+```
+
+证据：`acceptance/r30_selected_export.png`、`acceptance/r30_selected_export_runtime.log`。
+
+### 下一轮（R31）
+
+1. 分组拖拽手势（替代上/下按钮）。
+2. 连接详情按域名加入分流规则。
+3. 订阅 Worker 全流程集成测试（Room + MockWebServer）。
+4. 精选节点导出为 sing-box JSON 文件（SAF）。
