@@ -67,6 +67,7 @@ fun DiagnosticsScreen(
     selectedNode: ProxyNode?,
     onBack: () -> Unit,
     allNodes: List<ProxyNode> = emptyList(),
+    subscriptionCount: Int = 0,
     onOpenNodeDetail: (ProxyNode) -> Unit = {},
     diagnosticsViewModel: DiagnosticsViewModel = hiltViewModel()
 ) {
@@ -81,7 +82,8 @@ fun DiagnosticsScreen(
         groups = state.groups,
         ruleHits = state.ruleHits,
         chainHits = state.chainHits,
-        latencyHistory = state.latencyHistory
+        latencyHistory = state.latencyHistory,
+        subscriptionCount = subscriptionCount
     )
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("text/plain")

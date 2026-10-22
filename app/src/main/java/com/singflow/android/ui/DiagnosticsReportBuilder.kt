@@ -29,6 +29,7 @@ object DiagnosticsReportBuilder {
         ruleHits: List<ClashCountedLabel>,
         chainHits: List<ClashCountedLabel>,
         latencyHistory: List<LatencySample>,
+        subscriptionCount: Int = 0,
         timestampMs: Long = System.currentTimeMillis()
     ): String {
         val time = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date(timestampMs))
@@ -40,6 +41,7 @@ object DiagnosticsReportBuilder {
             appendLine("当前节点：${selectedNode?.displayName ?: "未选择"}")
             appendLine("Clash API：${if (available) "可用" else "不可用"}")
             appendLine("节点：${allNodes.size} 个（异常 ${problems.size} 个）")
+            appendLine("订阅：$subscriptionCount 个")
             appendLine("代理组：${groups.size} 个")
             if (groups.isNotEmpty()) {
                 groups.take(5).forEach { group ->

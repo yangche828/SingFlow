@@ -275,6 +275,7 @@ fun SingFlowRoot(viewModel: MainViewModel) {
                     selectedNode = selectedNode,
                     onBack = { navController.popBackStack() },
                     allNodes = nodes,
+                    subscriptionCount = subscriptions.size,
                     onOpenNodeDetail = { node ->
                         navController.navigate("node-detail/${node.id}") {
                             launchSingleTop = true

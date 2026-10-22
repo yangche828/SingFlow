@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import com.singflow.android.core.wifi.TrustedWifi
 
 /**
  * 开机 / 应用升级广播接收器。
@@ -18,6 +19,10 @@ class BootReceiver : BroadcastReceiver() {
         runCatching {
             val session = VpnControl.lastConfig(context) ?: return
             if (!session.autoConnect) return
+            if (TrustedWifi.isTrusted(context, session.settings)) {
+                Log.i(TAG, "当前为受信任 Wi-Fi，跳过开机自动连接")
+                return
+            }
             Log.i(TAG, "开机自动连接: ${session.nodeName}")
             VpnControl.connect(
                 context = context,
