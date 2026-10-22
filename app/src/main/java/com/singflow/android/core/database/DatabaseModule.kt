@@ -37,6 +37,7 @@ object DatabaseModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): SingFlowDatabase {
         return Room.databaseBuilder(context, SingFlowDatabase::class.java, SingFlowDatabase.DATABASE_NAME)
+            .addMigrations(MIGRATION_1_2)
             .fallbackToDestructiveMigration()
             .build()
     }
@@ -48,6 +49,10 @@ object DatabaseModule {
     /** 订阅 DAO。 */
     @Provides
     fun provideSubscriptionDao(database: SingFlowDatabase): SubscriptionDao = database.subscriptionDao()
+
+    /** 应用级国家分流规则 DAO。 */
+    @Provides
+    fun provideAppRouteRuleDao(database: SingFlowDatabase): AppRouteRuleDao = database.appRouteRuleDao()
 
     /** DataStore 设置管理器。 */
     @Provides
@@ -61,6 +66,13 @@ object DatabaseModule {
     @Singleton
     fun provideNodeRepository(nodeDao: NodeDao, json: Json): NodeRepository {
         return NodeRepository(nodeDao, json)
+    }
+
+    /** 应用级国家分流规则仓库。 */
+    @Provides
+    @Singleton
+    fun provideAppRouteRuleRepository(dao: AppRouteRuleDao): AppRouteRuleRepository {
+        return AppRouteRuleRepository(dao)
     }
 
     /** 全协议导入管理器。 */

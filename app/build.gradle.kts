@@ -51,14 +51,17 @@ android {
         applicationId = "com.singflow.android"
         minSdk = 33
         targetSdk = detectedCompileSdk
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "2.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
         }
+        // 单语言（简体中文）极限瘦身：剔除 AndroidX / Material3 附带的 80+ 种语言资源。
+        resourceConfigurations += listOf("zh", "zh-rCN")
     }
+
 
     buildTypes {
         debug {
@@ -104,12 +107,19 @@ android {
 
     packaging {
         jniLibs {
+            // 16 KB 页大小红线：禁止 legacy 解压打包，保证 .so 以 16 KB 对齐装入 APK。
             useLegacyPackaging = false
         }
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
             excludes += "/META-INF/DEPENDENCIES"
             excludes += "/META-INF/INDEX.LIST"
+            excludes += "/META-INF/*.kotlin_module"
+            excludes += "/META-INF/*.version"
+            excludes += "/META-INF/LICENSE*"
+            excludes += "/META-INF/NOTICE*"
+            excludes += "/DebugProbesKt.bin"
+            excludes += "/kotlin-tooling-metadata.json"
         }
     }
 

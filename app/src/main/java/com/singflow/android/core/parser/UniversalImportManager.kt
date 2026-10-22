@@ -87,7 +87,7 @@ class UniversalImportManager(
 
         // 3) 逐行解析
         val result = parseLines(trimmed, groupId)
-        return result.copy(nodes = result.nodes.distinctBy { it.dedupKey() })
+        return result.copy(nodes = result.nodes.distinctBy { it.configHash })
     }
 
     /**
@@ -99,10 +99,10 @@ class UniversalImportManager(
         val result = parseText(text, groupId)
         if (result.nodes.isEmpty() || nodeRepository == null) return result
 
-        val existing = nodeRepository.getAll().map { it.dedupKey() }.toMutableSet()
-        val toSave = result.nodes.filter { existing.add(it.dedupKey()) }
+        val existing = nodeRepository.getAll().map { it.configHash }.toMutableSet()
+        val toSave = result.nodes.filter { existing.add(it.configHash) }
         if (toSave.isNotEmpty()) {
-            nodeRepository.saveAll(toSave)
+            nodeRepository.saveAllPreservingStats(toSave)
         }
         return result.copy(nodes = toSave)
     }
@@ -129,7 +129,8 @@ class UniversalImportManager(
             if (node == null) {
                 errors += "${parser.name} 解析失败: ${candidate.take(48)}"
             } else {
-                nodes += node.copy(groupId = groupId)
+                val withGroup = node.copy(groupId = groupId)
+                nodes += NodeParserUtils.normalize(withGroup, rawShareUri = candidate)
             }
         }
         return ImportResult(nodes = nodes, errors = errors)
@@ -146,14 +147,14 @@ class UniversalImportManager(
             val obj = element as? JsonObject ?: return@forEach
             val type = obj.stringOrEmpty("type").lowercase(Locale.US)
             if (type in IGNORED_TYPES) return@forEach
-            parseOutbound(obj, groupId)?.let { nodes += it }
+            parseOutbound(obj, groupId)?.let { nodes += NodeParserUtils.normalize(it) }
         }
         (root["endpoints"] as? JsonArray)?.forEach { element ->
             val obj = element as? JsonObject ?: return@forEach
             if (obj.stringOrEmpty("type") != "wireguard") return@forEach
-            parseOutbound(obj, groupId)?.let { nodes += it }
+            parseOutbound(obj, groupId)?.let { nodes += NodeParserUtils.normalize(it) }
         }
-        return nodes.distinctBy { it.dedupKey() }
+        return nodes.distinctBy { it.configHash }
     }
 
     /**
@@ -342,7 +343,7 @@ class UniversalImportManager(
                     tls = TlsConfig.tls(serverName = "hy2.example.com", alpn = listOf("h3")),
                     createdAt = now + 4
                 )
-            )
+            ).map { NodeParserUtils.normalize(it) }
         }
     }
 }

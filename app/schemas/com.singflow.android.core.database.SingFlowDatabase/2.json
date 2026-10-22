@@ -1,0 +1,496 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 2,
+    "identityHash": "ce989c8dc0516f95a24dd25ff417c1f7",
+    "entities": [
+      {
+        "tableName": "nodes",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `configHash` TEXT NOT NULL DEFAULT '', `groupId` TEXT NOT NULL, `name` TEXT NOT NULL, `protocol` TEXT NOT NULL, `server` TEXT NOT NULL, `port` INTEGER NOT NULL, `uuid` TEXT NOT NULL, `alterId` INTEGER NOT NULL, `securityCipher` TEXT NOT NULL, `flow` TEXT NOT NULL, `password` TEXT NOT NULL, `method` TEXT NOT NULL, `plugin` TEXT NOT NULL, `pluginOpts` TEXT NOT NULL, `upMbps` INTEGER NOT NULL, `downMbps` INTEGER NOT NULL, `obfsType` TEXT NOT NULL, `obfsPassword` TEXT NOT NULL, `congestionControl` TEXT NOT NULL, `udpRelayMode` TEXT NOT NULL, `wgPrivateKey` TEXT NOT NULL, `wgPeerPublicKey` TEXT NOT NULL, `wgPreSharedKey` TEXT NOT NULL, `wgLocalAddress` TEXT NOT NULL, `wgReserved` TEXT NOT NULL, `wgMtu` INTEGER NOT NULL, `rawOutboundJson` TEXT NOT NULL, `transportJson` TEXT NOT NULL, `tlsJson` TEXT NOT NULL, `latencyMs` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `rawShareUri` TEXT NOT NULL DEFAULT '', `countryCode` TEXT NOT NULL DEFAULT 'UN', `countryNameCn` TEXT NOT NULL DEFAULT '未知地区', `egressIp` TEXT, `isRegionVerified` INTEGER NOT NULL DEFAULT 0, `probeTotalCount` INTEGER NOT NULL DEFAULT 0, `probeSuccessCount` INTEGER NOT NULL DEFAULT 0, `consecutiveFailures` INTEGER NOT NULL DEFAULT 0, `emaLatencyMs` REAL NOT NULL DEFAULT 0, `latencyJitterMs` REAL NOT NULL DEFAULT 0, `healthScore` INTEGER NOT NULL DEFAULT 50, `healthTag` TEXT NOT NULL DEFAULT '未检测', `lastProbeTimeMs` INTEGER NOT NULL DEFAULT 0, `cooldownUntilMs` INTEGER NOT NULL DEFAULT 0, `isFavorite` INTEGER NOT NULL DEFAULT 0, `cumulativeRxBytes` INTEGER NOT NULL DEFAULT 0, `cumulativeTxBytes` INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "configHash",
+            "columnName": "configHash",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "groupId",
+            "columnName": "groupId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "protocol",
+            "columnName": "protocol",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "server",
+            "columnName": "server",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "port",
+            "columnName": "port",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "uuid",
+            "columnName": "uuid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "alterId",
+            "columnName": "alterId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "securityCipher",
+            "columnName": "securityCipher",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "flow",
+            "columnName": "flow",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "password",
+            "columnName": "password",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "method",
+            "columnName": "method",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "plugin",
+            "columnName": "plugin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pluginOpts",
+            "columnName": "pluginOpts",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "upMbps",
+            "columnName": "upMbps",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "downMbps",
+            "columnName": "downMbps",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "obfsType",
+            "columnName": "obfsType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "obfsPassword",
+            "columnName": "obfsPassword",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "congestionControl",
+            "columnName": "congestionControl",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "udpRelayMode",
+            "columnName": "udpRelayMode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "wgPrivateKey",
+            "columnName": "wgPrivateKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "wgPeerPublicKey",
+            "columnName": "wgPeerPublicKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "wgPreSharedKey",
+            "columnName": "wgPreSharedKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "wgLocalAddress",
+            "columnName": "wgLocalAddress",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "wgReserved",
+            "columnName": "wgReserved",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "wgMtu",
+            "columnName": "wgMtu",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rawOutboundJson",
+            "columnName": "rawOutboundJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "transportJson",
+            "columnName": "transportJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tlsJson",
+            "columnName": "tlsJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "latencyMs",
+            "columnName": "latencyMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rawShareUri",
+            "columnName": "rawShareUri",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "countryCode",
+            "columnName": "countryCode",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'UN'"
+          },
+          {
+            "fieldPath": "countryNameCn",
+            "columnName": "countryNameCn",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'未知地区'"
+          },
+          {
+            "fieldPath": "egressIp",
+            "columnName": "egressIp",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "isRegionVerified",
+            "columnName": "isRegionVerified",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "probeTotalCount",
+            "columnName": "probeTotalCount",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "probeSuccessCount",
+            "columnName": "probeSuccessCount",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "consecutiveFailures",
+            "columnName": "consecutiveFailures",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "emaLatencyMs",
+            "columnName": "emaLatencyMs",
+            "affinity": "REAL",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "latencyJitterMs",
+            "columnName": "latencyJitterMs",
+            "affinity": "REAL",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "healthScore",
+            "columnName": "healthScore",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "50"
+          },
+          {
+            "fieldPath": "healthTag",
+            "columnName": "healthTag",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'未检测'"
+          },
+          {
+            "fieldPath": "lastProbeTimeMs",
+            "columnName": "lastProbeTimeMs",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "cooldownUntilMs",
+            "columnName": "cooldownUntilMs",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "isFavorite",
+            "columnName": "isFavorite",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "cumulativeRxBytes",
+            "columnName": "cumulativeRxBytes",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "cumulativeTxBytes",
+            "columnName": "cumulativeTxBytes",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_nodes_configHash",
+            "unique": false,
+            "columnNames": [
+              "configHash"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_nodes_configHash` ON `${TABLE_NAME}` (`configHash`)"
+          },
+          {
+            "name": "index_nodes_countryCode_healthScore",
+            "unique": false,
+            "columnNames": [
+              "countryCode",
+              "healthScore"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_nodes_countryCode_healthScore` ON `${TABLE_NAME}` (`countryCode`, `healthScore`)"
+          },
+          {
+            "name": "index_nodes_isFavorite_healthScore",
+            "unique": false,
+            "columnNames": [
+              "isFavorite",
+              "healthScore"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_nodes_isFavorite_healthScore` ON `${TABLE_NAME}` (`isFavorite`, `healthScore`)"
+          },
+          {
+            "name": "index_nodes_groupId",
+            "unique": false,
+            "columnNames": [
+              "groupId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_nodes_groupId` ON `${TABLE_NAME}` (`groupId`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "subscriptions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `url` TEXT NOT NULL, `lastUpdated` INTEGER NOT NULL, `upload` INTEGER NOT NULL, `download` INTEGER NOT NULL, `total` INTEGER NOT NULL, `expireAt` INTEGER NOT NULL, `autoUpdate` INTEGER NOT NULL, `enabled` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "url",
+            "columnName": "url",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastUpdated",
+            "columnName": "lastUpdated",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "upload",
+            "columnName": "upload",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "download",
+            "columnName": "download",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "total",
+            "columnName": "total",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expireAt",
+            "columnName": "expireAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "autoUpdate",
+            "columnName": "autoUpdate",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "enabled",
+            "columnName": "enabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "app_route_rules",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`packageName` TEXT NOT NULL, `appName` TEXT NOT NULL, `routeMode` TEXT NOT NULL, `targetCountryCode` TEXT NOT NULL, `updatedAtMs` INTEGER NOT NULL, PRIMARY KEY(`packageName`))",
+        "fields": [
+          {
+            "fieldPath": "packageName",
+            "columnName": "packageName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "appName",
+            "columnName": "appName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "routeMode",
+            "columnName": "routeMode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "targetCountryCode",
+            "columnName": "targetCountryCode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtMs",
+            "columnName": "updatedAtMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "packageName"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ce989c8dc0516f95a24dd25ff417c1f7')"
+    ]
+  }
+}

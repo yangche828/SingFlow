@@ -45,6 +45,7 @@ enum class PerAppMode(val displayName: String) {
  * @property autoConnectOnBoot 开机自动连接
  * @property selectedNodeId 当前选中节点 ID
  * @property fakeIpEnabled 是否启用 FakeIP（Phase 7 扩展，默认关闭）
+ * @property failover 故障自动切换配置
  */
 @Serializable
 data class AppSettings(
@@ -60,7 +61,8 @@ data class AppSettings(
     val logLevel: String = "info",
     val autoConnectOnBoot: Boolean = false,
     val selectedNodeId: String = "",
-    val fakeIpEnabled: Boolean = false
+    val fakeIpEnabled: Boolean = false,
+    val failover: FailoverConfig = FailoverConfig.DEFAULT
 ) {
     companion object {
         val DEFAULT = AppSettings()

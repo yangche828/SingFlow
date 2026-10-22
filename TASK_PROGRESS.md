@@ -214,3 +214,40 @@ TLS/WS/VLESS 全部端到端（证书校验仍是 `node.example.com`），因此
   APK 从 219.7 MB 压到 **80.5 MB**（dex 57 MB → 2.8 MB，去掉 x86_64 内核 −81.5 MB）。
 - **真机 release 验收 18/18 PASS**（HONOR BKQ-AN10 / Android 17 / arm64，`acceptance/e2e_realdevice_release_arm64.log`），
   同时确认模拟器此前连接瞬间 SIGILL 是 x86_64 ARM 翻译层限制，与 App 无关。
+
+## 功能迭代增强 V1（`singflow_android_function_enhancement_v1`）
+
+> 目标文档：`singflow_android_function_enhancement_v1.md`（v2.0 工程设计）。
+> 落地策略：保留现有包名 `com.singflow.android` 与已验收的内核链路，按「数据层 → 引擎 → 配置 → UI → 稳定性/省电」增量落地；
+> 文档中与 `AGENTS.md` 红线冲突的写法（`useLegacyPackaging = true`、`block-out` 出站、旧版 DNS `address` 字符串）**一律以 `AGENTS.md` 为准**。
+
+### R1：数据层、导入清洗、健康度评分、国家分组编译（已完成）
+
+| 模块 | 交付内容 | 验证 |
+| :--- | :--- | :--- |
+| 节点领域模型 | `ProxyNode` 新增连接指纹 `configHash`（由 `NodeFingerprint` 计算）、原始分享链接、国家/落地 IP/实测校准、探活统计、EMA 延迟与抖动、健康分/标签、冷却期、收藏、累计流量 | `NodeEntityMappingTest` 3/3 |
+| Room 数据层 | `NodeEntity` 同步新增列 + 索引；数据库升级到 v2（`MIGRATION_1_2` 原地加列，保留既有节点）；新增 `app_route_rules` 表与 `AppRouteRuleDao/Repository`；开启 `exportSchema` 并提交 `app/schemas/.../2.json` | KSP 生成 schema，字段默认值与迁移 SQL 一致 |
+| 导入引擎 | `NodeParserUtils`：名称 percent-decode、`+` 保留、控制/零宽字符清洗、64 字截断、SHA-256 连接指纹、23 条国家/地区识别规则（含旗帜、城市、机场三字码）；订阅刷新 `saveAllPreservingStats` 保留收藏/实测国家/健康度 | `NodeParserUtilsTest` 10/10、`UniversalParserTest` 17/17 |
+| 健康度评分 | `NodeHealthScorer`：拉普拉斯平滑成功率 55 + 延迟 30 + 抗抖动 10 + 置信度 5 − 连续失败 18/次，连续 2 次失败进入冷却；四级中文标签 | `NodeHealthScorerTest` 8/8 |
+| 自动切换策略 | `FailoverPreset` 四大预设、`FailoverConfig` 七项参数、`FailoverPolicy` 候选池/跨国公司回退/迟滞防抖/异常判定纯函数 | `FailoverPolicyTest` 11/11 |
+| 国家分组编译 | `CountryGroupInterceptor` 生成 `node-{id}`、`auto-{CC}`（urltest 前 10）、`group-{CC}`、`group-FAVORITES`、`group-GLOBAL`、`proxy` selector；`RoutingRuleInterceptor` 支持应用级 DIRECT/FAVORITES/COUNTRY/`reject` 分流，指定国家无节点时回退默认国家组；`SingBoxConfigPipeline.compile(nodes, selectedNodeId, ...)` 多节点入口 | `CountryRoutingConfigTest` 4/4 |
+| 构建瘦身 | `resourceConfigurations = zh/zh-rCN`；剔除 META-INF/kotlin 元数据/调试探针；R8 规则补齐 libbox/Go、Kotlin Serialization、Room、移除 `Log.v/d`；版本升至 2.0.0（versionCode 2） | `:app:testDebugUnitTest` 67/67 全绿 |
+
+**红线核对**：多节点配置仍为强类型 `dns.servers`、无 `domain_strategy`、无 `block`/`dns` 出站（应用阻断用 `reject` 动作）、TUN 使用 `address` 数组、路由首条为 `sniff`、规则集仍用本地 `.srs`；`useLegacyPackaging` 保持 `false`（16 KB 页对齐要求）。
+
+**R1 验证命令与结果**
+
+```text
+./gradlew :app:testDebugUnitTest   → BUILD SUCCESSFUL，7 个测试类 67 tests / 0 failures
+./gradlew :app:assembleDebug       → BUILD SUCCESSFUL，app-debug.apk 227.6 MB
+./gradlew :app:assembleRelease     → BUILD SUCCESSFUL，app-release.apk 80.43 MiB（84,372,264 B）
+zipalign -c -P 16                  → Verification successful；资源仅保留 zh-rCN
+```
+
+### 后续轮次（进行中）
+
+1. **探活引擎**：基于 Clash API `/proxies/{tag}/delay` + `https://www.cloudflare.com/cdn-cgi/trace` 的批量并发探活与落地国家识别（12 并发信号量、3500 ms 超时、回退 `api.ip.sb/geoip`）。
+2. **切换执行器**：`FailoverController` 接入 `NodeHealthScorer` 与 libbox Selector 内存态热切换（不重建 TUN），并加本机断网甄别。
+3. **UI**：节点页国家分组折叠、健康分徽章、收藏置顶/批量探活/测地区；设置页默认国家、应用级国家分流器、四大预设与七项参数面板；主页当前国家与健康度。
+4. **稳定性/省电**：物理网络切换重绑（`setUnderlyingNetworks`）、`Mutex` 内核生命周期互斥、`PowerStateController` 三级功耗状态机、`AtomicFile` 配置写入。
+5. **订阅/导出/备份**：订阅自动更新 Worker、精选节点导出/二维码、本地加密备份与 WebDAV。

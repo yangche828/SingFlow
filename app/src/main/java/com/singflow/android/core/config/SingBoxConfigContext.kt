@@ -1,5 +1,6 @@
 package com.singflow.android.core.config
 
+import com.singflow.android.core.database.AppRouteRuleEntity
 import com.singflow.android.core.model.AppSettings
 import com.singflow.android.core.model.ProxyNode
 import kotlinx.serialization.json.JsonArray
@@ -11,16 +12,23 @@ import kotlinx.serialization.json.put
 /**
  * 配置编译上下文：各拦截器只修改自己负责的段落，最终由 [build] 组装为完整 sing-box 配置。
  *
- * @property node 目标节点
+ * @property node 当前选中节点
  * @property settings 全局设置
  * @property proxyTag 代理 outbound 的 tag
+ * @property nodes 参与编译的全部节点（多节点时生成国家分组）
+ * @property appRouteRules 应用级国家分流规则
+ * @property availableCountryCodes 本次编译实际生成国家组的国家代码集合
  */
 class SingBoxConfigContext(
     val node: ProxyNode,
     val settings: AppSettings,
     val proxyTag: String = "proxy",
     /** 本地规则集目录；为空时退回远程下载。 */
-    val ruleSetDir: String? = null
+    val ruleSetDir: String? = null,
+    /** 参与编译的全部节点；默认只包含当前节点。 */
+    val nodes: List<ProxyNode> = listOf(node),
+    /** 应用级国家分流规则。 */
+    val appRouteRules: List<AppRouteRuleEntity> = emptyList()
 ) {
     /** 日志段。 */
     var log: JsonObject = buildJsonObject {
@@ -51,6 +59,15 @@ class SingBoxConfigContext(
 
     /** 编译诊断信息，会写入运行日志。 */
     val diagnostics: MutableList<String> = mutableListOf()
+
+    /** 本次编译实际生成国家组的国家代码集合。 */
+    val availableCountryCodes: MutableSet<String> = linkedSetOf()
+
+    /** 未单独指定国家的应用默认使用的出站 tag。 */
+    var defaultCountryGroupTag: String = proxyTag
+
+    /** 收藏组 tag；没有收藏节点时为 null。 */
+    var favoritesGroupTag: String? = null
 
     /**
      * 组装完整配置对象。

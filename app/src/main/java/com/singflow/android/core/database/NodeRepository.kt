@@ -10,6 +10,9 @@ import kotlinx.serialization.json.Json
 /**
  * 节点仓库：负责领域模型与持久化实体之间的转换。
  *
+ * 订阅重复导入时使用 [saveAllPreservingStats]，只刷新名称与配置，
+ * 完整保留收藏、实测国家与历史健康度。
+ *
  * @param nodeDao 节点 DAO
  * @param json JSON 编解码器
  */
@@ -17,7 +20,7 @@ class NodeRepository(
     private val nodeDao: NodeDao,
     private val json: Json
 ) {
-    /** 观察全部节点。 */
+    /** 观察全部节点（收藏与健康度优先）。 */
     fun observeNodes(): Flow<List<ProxyNode>> = nodeDao.observeAll().map { list -> list.map { it.toDomainSafe() } }
 
     /** 读取全部节点。 */
@@ -26,21 +29,118 @@ class NodeRepository(
     /** 按 ID 读取。 */
     suspend fun getById(id: String): ProxyNode? = nodeDao.getById(id)?.toDomainSafe()
 
+    /** 按连接指纹读取。 */
+    suspend fun findByConfigHash(hash: String): ProxyNode? {
+        if (hash.isBlank()) return null
+        return nodeDao.findByConfigHash(hash)?.toDomainSafe()
+    }
+
+    /** 读取指定国家的节点。 */
+    suspend fun getByCountry(countryCode: String): List<ProxyNode> =
+        nodeDao.getByCountry(countryCode).map { it.toDomainSafe() }
+
+    /** 读取自动切换候选。 */
+    suspend fun getHealthyCandidates(
+        nowMs: Long = System.currentTimeMillis(),
+        minScore: Int = 50
+    ): List<ProxyNode> = nodeDao.getHealthyCandidates(nowMs, minScore).map { it.toDomainSafe() }
+
     /** 保存单个节点。 */
     suspend fun save(node: ProxyNode) {
         nodeDao.upsert(node.toEntity())
     }
 
-    /** 批量保存节点，返回实际写入数量。 */
+    /** 批量保存节点（新导入场景）。 */
     suspend fun saveAll(nodes: List<ProxyNode>): Int {
         if (nodes.isEmpty()) return 0
         nodeDao.upsertAll(nodes.map { it.toEntity() })
         return nodes.size
     }
 
+    /**
+     * 批量保存并保留已有节点的统计与个性化字段。
+     *
+     * 用于订阅刷新：同一连接指纹的节点只更新配置与展示名，
+     * 不覆盖收藏、累计流量、探活次数与实测国家。
+     */
+    suspend fun saveAllPreservingStats(nodes: List<ProxyNode>): Int {
+        if (nodes.isEmpty()) return 0
+        var written = 0
+        for (node in nodes) {
+            val incoming = node.toEntity()
+            val existing = nodeDao.findByConfigHash(node.configHash) ?: nodeDao.getById(node.id)
+            if (existing == null) {
+                nodeDao.upsert(incoming)
+            } else {
+                nodeDao.update(
+                    existing.copy(
+                        configHash = incoming.configHash,
+                        rawOutboundJson = incoming.rawOutboundJson,
+                        rawShareUri = incoming.rawShareUri.ifBlank { existing.rawShareUri },
+                        name = incoming.name,
+                        groupId = incoming.groupId,
+                        protocol = incoming.protocol,
+                        server = incoming.server,
+                        port = incoming.port,
+                        uuid = incoming.uuid,
+                        alterId = incoming.alterId,
+                        securityCipher = incoming.securityCipher,
+                        flow = incoming.flow,
+                        password = incoming.password,
+                        method = incoming.method,
+                        plugin = incoming.plugin,
+                        pluginOpts = incoming.pluginOpts,
+                        upMbps = incoming.upMbps,
+                        downMbps = incoming.downMbps,
+                        obfsType = incoming.obfsType,
+                        obfsPassword = incoming.obfsPassword,
+                        congestionControl = incoming.congestionControl,
+                        udpRelayMode = incoming.udpRelayMode,
+                        wgPrivateKey = incoming.wgPrivateKey,
+                        wgPeerPublicKey = incoming.wgPeerPublicKey,
+                        wgPreSharedKey = incoming.wgPreSharedKey,
+                        wgLocalAddress = incoming.wgLocalAddress,
+                        wgReserved = incoming.wgReserved,
+                        wgMtu = incoming.wgMtu,
+                        transportJson = incoming.transportJson,
+                        tlsJson = incoming.tlsJson,
+                        countryCode = if (existing.isRegionVerified) {
+                            existing.countryCode
+                        } else {
+                            incoming.countryCode
+                        },
+                        countryNameCn = if (existing.isRegionVerified) {
+                            existing.countryNameCn
+                        } else {
+                            incoming.countryNameCn
+                        }
+                    )
+                )
+            }
+            written++
+        }
+        return written
+    }
+
+    /** 更新节点（健康度、国家、收藏等整体写回）。 */
+    suspend fun update(node: ProxyNode) {
+        nodeDao.update(node.toEntity())
+    }
+
     /** 更新节点延迟。 */
     suspend fun updateLatency(id: String, latencyMs: Int) {
         nodeDao.updateLatency(id, latencyMs)
+    }
+
+    /** 设置收藏。 */
+    suspend fun setFavorite(id: String, favorite: Boolean) {
+        nodeDao.setFavorite(id, favorite)
+    }
+
+    /** 累加节点流量。 */
+    suspend fun addTraffic(id: String, rxBytes: Long, txBytes: Long) {
+        if (rxBytes <= 0 && txBytes <= 0) return
+        nodeDao.addTraffic(id, rxBytes, txBytes)
     }
 
     /** 重置全部延迟。 */
@@ -51,6 +151,12 @@ class NodeRepository(
     /** 删除节点。 */
     suspend fun delete(id: String) {
         nodeDao.deleteById(id)
+    }
+
+    /** 批量删除节点。 */
+    suspend fun deleteAll(ids: List<String>) {
+        if (ids.isEmpty()) return
+        nodeDao.deleteByIds(ids)
     }
 
     /** 清空节点。 */

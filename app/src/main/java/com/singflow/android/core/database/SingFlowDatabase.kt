@@ -8,9 +8,9 @@ import androidx.room.TypeConverters
  * SingFlow 主数据库。
  */
 @Database(
-    entities = [NodeEntity::class, SubscriptionEntity::class],
-    version = 1,
-    exportSchema = false
+    entities = [NodeEntity::class, SubscriptionEntity::class, AppRouteRuleEntity::class],
+    version = 2,
+    exportSchema = true
 )
 @TypeConverters(NodeConverters::class)
 abstract class SingFlowDatabase : RoomDatabase() {
@@ -19,6 +19,9 @@ abstract class SingFlowDatabase : RoomDatabase() {
 
     /** 订阅 DAO。 */
     abstract fun subscriptionDao(): SubscriptionDao
+
+    /** 应用级国家分流规则 DAO。 */
+    abstract fun appRouteRuleDao(): AppRouteRuleDao
 
     companion object {
         const val DATABASE_NAME = "singflow.db"
