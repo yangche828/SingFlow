@@ -66,11 +66,18 @@ android {
             applicationIdSuffix = ""
         }
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // 个人自用：release 复用调试签名以便直接安装；对外发布时替换为正式 keystore。
+            signingConfig = signingConfigs.getByName("debug")
+            // 仅保留真机架构，去掉模拟器用的 x86_64 内核（单份约 80 MB）。
+            ndk {
+                abiFilters += "arm64-v8a"
+            }
         }
     }
 
