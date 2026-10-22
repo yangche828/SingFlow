@@ -1,0 +1,5 @@
+== R14 Worker 退避与 FakeIP 验收 ==
+workspec=SubscriptionUpdateWorker interval=43200000 backoff_policy=0(EXPONENTIAL) backoff_delay=30000ms
+fakeip_dns=true store_fakeip=true
+http204=204 (FakeIP 开启后可正常转发)
+screenshot=acceptance/r14_worker_fakeip.png

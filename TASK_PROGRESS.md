@@ -595,3 +595,29 @@ restore=恢复完成：6 个节点、1 个订阅、1 条应用规则，请重新
 2. 节点真实出口 GeoIP 批量探测与自动命名。
 3. Worker 失败重试策略细化（指数退避、最大重试次数）。
 4. 订阅更新时保留节点收藏/健康统计的端到端测试。
+
+### R14：Worker 指数退避与 FakeIP 开关（已完成）
+
+| 模块 | 交付内容 | 验证 |
+| :--- | :--- | :--- |
+| 重试策略 | 订阅 Worker 最多尝试 5 次；每次失败指数退避（30s 起）；达到上限返回 `failure`，避免无限重试耗电 | WorkSpec 验证 |
+| 调度配置 | `PeriodicWorkRequest` 设置 `BackoffPolicy.EXPONENTIAL` + 30 秒初始退避 | `backoff_policy=0` |
+| FakeIP | 设置页「网络」新增 FakeIP 开关（配置层此前已支持，缺 UI） | 截图 |
+| 运行时 | FakeIP 开启后连接成功，`dns-fakeip` 与 `store_fakeip` 写入，`generate_204=204` | 实测 |
+
+**运行时验收**：
+
+```text
+workspec=SubscriptionUpdateWorker interval=43200000 backoff_policy=0(EXPONENTIAL) backoff_delay=30000ms
+fakeip_dns=true store_fakeip=true
+http204=204
+```
+
+证据：`acceptance/r14_worker_fakeip.png`、`acceptance/r14_worker_fakeip_runtime.log`。
+
+### 下一轮（R15）
+
+1. 节点分组拖拽排序（收藏组/国家组）。
+2. 节点真实出口 GeoIP 批量探测与自动命名。
+3. 订阅更新时保留收藏/健康统计的端到端测试。
+4. 连接诊断增加“规则命中统计”和延迟历史曲线。

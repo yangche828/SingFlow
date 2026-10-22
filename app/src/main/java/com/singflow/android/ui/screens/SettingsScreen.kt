@@ -178,6 +178,12 @@ fun SettingsScreen(
                 onCheckedChange = { onUpdate(settings.copy(enableIpv6 = it)) }
             )
             SwitchRow(
+                title = "FakeIP 域名解析",
+                subtitle = "域名返回 198.18.x.x 由内核反查真实域名，减少 DNS 泄露",
+                checked = settings.fakeIpEnabled,
+                onCheckedChange = { onUpdate(settings.copy(fakeIpEnabled = it)) }
+            )
+            SwitchRow(
                 title = "开机自动连接",
                 subtitle = "开机或应用升级后恢复上次隧道",
                 checked = settings.autoConnectOnBoot,
