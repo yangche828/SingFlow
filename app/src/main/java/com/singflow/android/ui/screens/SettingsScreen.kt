@@ -54,6 +54,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
 import com.singflow.android.core.model.AppSettings
+import com.singflow.android.core.model.FailoverConfig
 import com.singflow.android.core.model.FailoverPreset
 import com.singflow.android.core.model.PerAppMode
 import com.singflow.android.core.model.ProxyNode
@@ -80,6 +81,7 @@ fun SettingsScreen(
     var portText by remember(settings.mixedPort) { mutableStateOf(settings.mixedPort.toString()) }
     var showAppPicker by remember { mutableStateOf(false) }
     var showCountryPicker by remember { mutableStateOf(false) }
+    var showIntervalPicker by remember { mutableStateOf(false) }
     var savedHint by remember { mutableStateOf<String?>(null) }
 
     Column(
@@ -264,6 +266,20 @@ fun SettingsScreen(
                 ) {
                     Text("默认国家：$countryLabel")
                 }
+                Spacer(modifier = Modifier.height(8.dp))
+                val interval = settings.failover.activeCheckIntervalSec
+                OutlinedButton(
+                    onClick = { showIntervalPicker = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        if (interval <= 0) {
+                            "巡检周期：仅被动触发"
+                        } else {
+                            "巡检周期：${interval} 秒"
+                        }
+                    )
+                }
             }
         }
 
@@ -389,6 +405,36 @@ fun SettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showCountryPicker = false }) {
+                    Text("关闭")
+                }
+            }
+        )
+    }
+
+    if (showIntervalPicker) {
+        AlertDialog(
+            onDismissRequest = { showIntervalPicker = false },
+            title = { Text("主动巡检周期") },
+            text = {
+                LazyColumn(modifier = Modifier.heightIn(max = 360.dp)) {
+                    items(FailoverConfig.ACTIVE_CHECK_INTERVAL_OPTIONS, key = { it }) { option ->
+                        CountryOptionRow(
+                            label = if (option <= 0) "仅被动触发（不主动巡检）" else "$option 秒",
+                            selected = settings.failover.activeCheckIntervalSec == option,
+                            onClick = {
+                                onUpdate(
+                                    settings.copy(
+                                        failover = settings.failover.copy(activeCheckIntervalSec = option)
+                                    )
+                                )
+                                showIntervalPicker = false
+                            }
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showIntervalPicker = false }) {
                     Text("关闭")
                 }
             }

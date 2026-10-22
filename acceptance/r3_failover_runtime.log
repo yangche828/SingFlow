@@ -1,0 +1,9 @@
+{"type": "Selector", "name": "proxy", "udp": true, "history": [{"time":"2026-10-22T17:50:13.8082605Z","delay":217}], "now": "node-af215d95-deaf-4b7e-9b79-c57c2d2315b2", "all": ["node-af215d95-deaf-4b7e-9b79-c57c2d2315b2","group-JP","group-CN","group-SG","group-US","group-FAVORITES","group-GLOBAL","node-30712b2b-2045-4c06-a41f-9efac7f78a04","node-caa682d6-8ef2-4375-8b3e-0920c94278bb","node-b09051a0-6f46-4888-ada9-5aff297de26b","node-a8dfe269-1788-47b6-ac02-83ede0ce4111","node-33b04745-06db-4748-9629-5853a2d667d0"]}
+t=8s now=node-b09051a0-6f46-4888-ada9-5aff297de26b
+AFTER_NOW=node-b09051a0-6f46-4888-ada9-5aff297de26b
+AFTER_JSON={"type": "Selector", "name": "proxy", "udp": true, "history": [{"time":"2026-10-22T17:50:42.391796Z","delay":225}], "now": "node-b09051a0-6f46-4888-ada9-5aff297de26b", "all": ["node-af215d95-deaf-4b7e-9b79-c57c2d2315b2","group-JP","group-CN","group-SG","group-US","group-FAVORITES","group-GLOBAL","node-30712b2b-2045-4c06-a41f-9efac7f78a04","node-caa682d6-8ef2-4375-8b3e-0920c94278bb","node-b09051a0-6f46-4888-ada9-5aff297de26b","node-a8dfe269-1788-47b6-ac02-83ede0ce4111","node-33b04745-06db-4748-9629-5853a2d667d0"]}
+AFTER_204=204
+10-22 17:49:56.396  5887  5915 I SingFlowVpnService: failover started: preset=COUNTRY_LOCKED_HEALTH, interval=30s
+10-22 17:50:06.890  5887  5915 I SingFlowVpnService: failover: action=NO_CANDIDATE 当前节点已判定故障，但没有可用候选节点
+10-22 17:50:42.431  5887  5913 I SingFlowVpnService: failover: action=SWITCHED 已切换至 🇯🇵 日本 B（225ms）
+10-22 17:50:42.537  5887  5912 I SingFlowVpnService: failover switched: af215d95-deaf-4b7e-9b79-c57c2d2315b2 -> b09051a0-6f46-4888-ada9-5aff297de26b

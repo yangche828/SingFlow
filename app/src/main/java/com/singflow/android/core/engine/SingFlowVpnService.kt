@@ -19,14 +19,29 @@ import androidx.core.content.ContextCompat
 import com.singflow.android.MainActivity
 import com.singflow.android.R
 import com.singflow.android.core.database.JsonHolder
+import com.singflow.android.core.database.NodeRepository
+import com.singflow.android.core.database.PreferencesManager
+import com.singflow.android.core.failover.ClashApiOutboundSwitcher
+import com.singflow.android.core.failover.FailoverController
+import com.singflow.android.core.failover.FailoverOutcome
+import com.singflow.android.core.failover.LocalNetworkVerifier
+import com.singflow.android.core.failover.RepositoryNodeStore
 import com.singflow.android.core.model.AppSettings
 import com.singflow.android.core.model.PerAppMode
 import com.singflow.android.core.model.VpnStatus
+import com.singflow.android.core.probe.ClashApiClient
+import com.singflow.android.core.probe.ClashApiNodeProber
+import com.singflow.android.core.probe.MixedProxyNodeProber
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 import java.net.InetAddress
 
 /**
@@ -35,14 +50,29 @@ import java.net.InetAddress
  * 适配 Android 13 ~ 17：
  * - 前台服务类型 `systemExempted|specialUse`；
  * - TUN 建立后通过 `addDisallowedApplication` 与 `protect` 防回环；
- * - 支持 `ACTION_RELOAD` 节点热切换。
+ * - 支持 `ACTION_RELOAD` 节点热切换；
+ * - 多节点模式下按巡检周期执行健康检查与 Selector 内存态自动切换。
  */
+@AndroidEntryPoint
 class SingFlowVpnService : VpnService() {
+
+    @Inject
+    lateinit var nodeRepository: NodeRepository
+
+    @Inject
+    lateinit var clashApiClient: ClashApiClient
+
+    @Inject
+    lateinit var localNetworkVerifier: LocalNetworkVerifier
+
+    @Inject
+    lateinit var preferencesManager: PreferencesManager
 
     private var tunInterface: ParcelFileDescriptor? = null
     private var bridge: LibboxBridge? = null
     private var monitor: TrafficAndLogMonitor? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private var failoverJob: Job? = null
 
     private var currentConfig: String = ""
     private var currentNodeId: String = ""
@@ -175,6 +205,7 @@ class SingFlowVpnService : VpnService() {
                 engineMode = engineMode
             )
             updateNotification()
+            startFailoverLoop()
         }
     }
 
@@ -183,6 +214,8 @@ class SingFlowVpnService : VpnService() {
      */
     private fun reloadEngine(config: String) {
         currentConfig = config
+        failoverJob?.cancel()
+        failoverJob = null
         VpnStateRepository.setStatus(
             status = VpnStatus.CONNECTING,
             nodeId = currentNodeId,
@@ -213,6 +246,83 @@ class SingFlowVpnService : VpnService() {
                 engineMode = engineMode
             )
             updateNotification()
+            startFailoverLoop()
+        }
+    }
+
+    /**
+     * 启动后台健康巡检与自动切换。
+     *
+     * 仅在「多节点国家分组 + 自动切换」同时开启时运行；
+     * 每轮只探测当前节点，失败后由 [FailoverController] 完成候选确认与 Selector 热切换。
+     */
+    private fun startFailoverLoop() {
+        failoverJob?.cancel()
+        failoverJob = null
+        val config = currentSettings.failover
+        if (!currentSettings.countryRoutingEnabled || !config.enabled) {
+            VpnStateRepository.addLog(
+                "INFO",
+                "自动切换未启用（多节点分组=${currentSettings.countryRoutingEnabled}, " +
+                    "failover=${config.enabled}）"
+            )
+            return
+        }
+
+        val intervalSec = config.activeCheckIntervalSec.takeIf { it > 0 }
+            ?: DEFAULT_PASSIVE_CHECK_INTERVAL_SEC
+        VpnStateRepository.addLog(
+            "INFO",
+            "自动切换已启动：${config.preset.displayName}，巡检周期 ${intervalSec}s，超时 ${config.singleProbeTimeoutMs}ms"
+        )
+        Log.i(TAG, "failover started: preset=${config.preset}, interval=${intervalSec}s")
+        failoverJob = scope.launch {
+            // 给内核与 TUN 留出稳定时间，避免刚连接就误判。
+            delay(FAILOVER_WARMUP_MS)
+            val controller = FailoverController(
+                store = RepositoryNodeStore(nodeRepository),
+                currentProber = MixedProxyNodeProber(currentSettings.mixedPort),
+                candidateProber = ClashApiNodeProber(clashApiClient),
+                switcher = ClashApiOutboundSwitcher(clashApiClient),
+                localNetwork = localNetworkVerifier
+            )
+            while (isActive && VpnStateRepository.snapshot().status == VpnStatus.CONNECTED) {
+                val current = nodeRepository.getById(currentNodeId)
+                if (current == null) {
+                    VpnStateRepository.addLog("WARN", "自动切换：找不到当前节点 $currentNodeId，跳过本轮")
+                } else {
+                    val outcome = runCatching {
+                        controller.checkAndFailover(GROUP_TAG, current, config)
+                    }.getOrElse { error ->
+                        FailoverOutcome(
+                            action = FailoverOutcome.Action.SKIPPED,
+                            from = current,
+                            message = "巡检异常: ${error.javaClass.simpleName}: ${error.message}"
+                        )
+                    }
+                    val level = if (outcome.action == FailoverOutcome.Action.SWITCHED) "INFO" else "DEBUG"
+                    VpnStateRepository.addLog(level, "自动切换：${outcome.message}")
+                    Log.i(TAG, "failover: action=${outcome.action} ${outcome.message}")
+                    if (outcome.action == FailoverOutcome.Action.SWITCHED) {
+                        val target = outcome.to
+                        if (target != null) {
+                            currentNodeId = target.id
+                            currentNodeName = target.displayName
+                            preferencesManager.setSelectedNode(target.id)
+                            VpnStateRepository.setStatus(
+                                status = VpnStatus.CONNECTED,
+                                nodeId = target.id,
+                                nodeName = target.displayName,
+                                engineMode = engineMode
+                            )
+                            updateNotification()
+                            Log.i(TAG, "failover switched: ${current.id} -> ${target.id}")
+                        }
+                    }
+                }
+                delay(intervalSec * 1_000L)
+            }
+            VpnStateRepository.addLog("INFO", "自动切换巡检已停止")
         }
     }
 
@@ -399,6 +509,8 @@ class SingFlowVpnService : VpnService() {
         }
         runCatching { monitor?.stop() }
         monitor = null
+        failoverJob?.cancel()
+        failoverJob = null
         runCatching { bridge?.stop() }
         bridge = null
         runCatching { tunInterface?.close() }
@@ -530,6 +642,15 @@ class SingFlowVpnService : VpnService() {
         const val EXTRA_NODE_ID = "EXTRA_NODE_ID"
         const val EXTRA_NODE_NAME = "EXTRA_NODE_NAME"
         const val EXTRA_SETTINGS = "EXTRA_SETTINGS"
+
+        /** 多节点配置中默认 selector 组 tag。 */
+        private const val GROUP_TAG = "proxy"
+
+        /** 连接后等待 TUN 稳定的时间。 */
+        private const val FAILOVER_WARMUP_MS = 8_000L
+
+        /** 用户选择「仅被动触发」时的兜底巡检周期。 */
+        private const val DEFAULT_PASSIVE_CHECK_INTERVAL_SEC = 180
 
         /** 启动 VPN 服务（调用方需已完成 VpnService.prepare）。 */
         fun start(context: Context, configJson: String, nodeId: String, nodeName: String, settings: AppSettings) {

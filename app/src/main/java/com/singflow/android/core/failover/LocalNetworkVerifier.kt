@@ -16,7 +16,12 @@ interface LocalNetworkVerifier {
 }
 
 /**
- * 基于 [ConnectivityManager] 的实现：要求底层网络同时具备 INTERNET 与 VALIDATED。
+ * 基于 [ConnectivityManager] 的实现。
+ *
+ * 判定标准刻意不强制 `NET_CAPABILITY_VALIDATED`：
+ * 模拟器 / 部分运营商网络在 VPN 抢占默认网络后不会返回 VALIDATED，
+ * 但底层 TCP 仍然可用。这里以 `INTERNET 且非 Captive Portal` 为准，
+ * 否则会把「节点故障」误判成「本机断网」而拒绝切换。
  *
  * @param context 应用上下文
  */
@@ -30,11 +35,17 @@ class AndroidLocalNetworkVerifier(context: Context) : LocalNetworkVerifier {
         val network = runCatching { manager.activeNetwork }.getOrNull() ?: return false
         val capabilities = runCatching { manager.getNetworkCapabilities(network) }.getOrNull()
             ?: return false
-        if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) {
-            // VPN 自身就是当前网络时，继续看其底层是否已校验。
-            return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+
+        val hasInternet = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        if (!hasInternet) return false
+        if (capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_CAPTIVE_PORTAL)) {
+            return false
         }
-        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+        // VPN 承载网络由 SingFlow 自己维护，只看其是否具备 INTERNET。
+        if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) return true
+        return capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ||
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) ||
             capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
     }
 }

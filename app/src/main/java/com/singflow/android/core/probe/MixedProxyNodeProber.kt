@@ -3,6 +3,7 @@ package com.singflow.android.core.probe
 import com.singflow.android.core.model.ProxyNode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.ConnectionPool
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.net.InetSocketAddress
@@ -30,6 +31,10 @@ class MixedProxyNodeProber(
         val started = System.currentTimeMillis()
         val proxyClient = client.newBuilder()
             .proxy(Proxy(Proxy.Type.HTTP, InetSocketAddress(LOOPBACK, mixedPort)))
+            // 每次健康检查必须新建隧道：复用旧连接会把「宿主连接仍然存活」
+            // 误判成「节点仍然健康」，从而永远不触发故障切换。
+            .connectionPool(ConnectionPool())
+            .retryOnConnectionFailure(false)
             .connectTimeout(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
             .readTimeout(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
             .callTimeout(timeoutMs.toLong() + 1_500L, TimeUnit.MILLISECONDS)

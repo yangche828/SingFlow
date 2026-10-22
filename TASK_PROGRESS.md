@@ -287,3 +287,33 @@ Clash API: proxy(Selector) / group-JP / group-SG / group-US / group-FAVORITES / 
 2. 应用级国家分流 UI（选择应用 → 国家/收藏/直连/阻断）与连接诊断面板。
 3. 七项切换参数滑块、`AtomicFile` 配置写入、`setUnderlyingNetworks` 物理网络重绑、内核生命周期 `Mutex`。
 4. 主页展示当前国家/健康度，省电状态机接入服务与 UI 采样。
+
+### R3：服务内自动切换 + 三个运行时缺陷修复（已完成）
+
+| 模块 | 交付内容 | 验证 |
+| :--- | :--- | :--- |
+| 服务集成 | `SingFlowVpnService` 改为 `@AndroidEntryPoint`，注入 `NodeRepository` / `ClashApiClient` / `LocalNetworkVerifier` / `PreferencesManager`；连接成功 8 秒后启动巡检协程，按巡检周期执行 `FailoverController`；切换后更新 `currentNodeId`、DataStore 选中节点、前台通知并写日志 | API 33 实测 |
+| 巡检控制 | 新增「巡检周期」选择器（仅被动 / 30 / 60 / 180 / 300 秒）；关闭多节点或自动切换时明确记录原因；`reload/stop` 会取消旧巡检协程 | 设置页截图 |
+| 缺陷 1：本机断网误判 | 模拟器/VPN 抢占默认网络后底层 cellular 只有 `PARTIAL_CONNECTIVITY`、没有 `VALIDATED`，旧实现因此每轮都判 `LOCAL_NETWORK_DOWN`，永不切换；改为 `INTERNET && !CAPTIVE_PORTAL`，VPN/Wi-Fi/蜂窝/以太网均可判定 | 修复前后 logcat 对比 |
+| 缺陷 2：陈旧连接掩盖节点死亡 | `MixedProxyNodeProber` 复用共享 OkHttp 连接池，节点端口已断但既有隧道仍存活，探活一直「健康」；改为每次探活新建 `ConnectionPool()` + `retryOnConnectionFailure(false)` | 修复后切断 A 端口，8 秒内切换 |
+| 缺陷 3：Clash API 明文被系统拦截 | Android 9+ 默认禁止 cleartext，App 内访问 `http://127.0.0.1:9090` 被拒，批量探活实际退回 TCP；新增 `network_security_config.xml` 仅放行 `127.0.0.1/localhost` | 批量探活后节点健康分从 22 → 66/69 |
+| 运行时验收 | 两个 JP 回环节点 A(8445)/B(8446)：A 端口断开后，`proxy` selector 8 秒内从 `node-af215…` 切换到 `node-b090…`，延迟 225ms；切换后 mixed 代理访问 `generate_204` 仍为 **204** | `acceptance/r3_failover_runtime.log` |
+
+运行时关键日志：
+
+```text
+17:50:42.431 SingFlowVpnService: failover: action=SWITCHED 已切换至 🇯🇵 日本 B（225ms）
+17:50:42.537 SingFlowVpnService: failover switched: af215d95… -> b09051a0…
+AFTER_NOW=node-b09051a0-6f46-4888-ada9-5aff297de26b
+AFTER_204=204
+```
+
+证据：`acceptance/r3_failover_runtime.log`、`acceptance/r3_home_after_failover.png`、
+`acceptance/r3_nodes_after_failover.png`、`acceptance/r3_failover_logs.png`。
+
+### 下一轮（R4）
+
+1. 应用级国家分流 UI（选择应用 → 国家/收藏/直连/阻断）与连接诊断面板。
+2. 七项切换参数滑块、`AtomicFile` 配置写入、`setUnderlyingNetworks` 物理网络重绑、内核生命周期 `Mutex`。
+3. 主页展示当前国家/健康度；省电状态机接入服务采样与通知刷新。
+4. 对已修复的三个运行时缺陷补回归测试/验收脚本断言。
