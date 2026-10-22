@@ -1,5 +1,6 @@
 package com.singflow.android.core.probe
 
+import android.util.Log
 import com.singflow.android.core.model.ProxyNode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -78,13 +79,19 @@ class MixedProxyNodeProber(
         return runCatching {
             val request = Request.Builder().url(url).get().build()
             client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return@use null
+                if (!response.isSuccessful) {
+                    Log.w(TAG, "probe HTTP ${response.code} for $url")
+                    return@use null
+                }
                 response.body?.string()
             }
+        }.onFailure { error ->
+            Log.w(TAG, "probe $url failed: ${error.javaClass.simpleName}: ${error.message}")
         }.getOrNull()
     }
 
     private companion object {
         const val LOOPBACK = "127.0.0.1"
+        const val TAG = "MixedProxyNodeProber"
     }
 }

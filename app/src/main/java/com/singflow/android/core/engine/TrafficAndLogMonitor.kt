@@ -49,6 +49,16 @@ class TrafficAndLogMonitor(
     private var lastClashRx = 0L
     private var sampleAt = System.currentTimeMillis()
 
+    @Volatile
+    private var paused = false
+
+    /**
+     * 功耗策略：L3 息屏休眠时暂停速率采样与 UI 发布。
+     */
+    fun setPaused(value: Boolean) {
+        paused = value
+    }
+
     /**
      * 启动监控。
      */
@@ -58,8 +68,10 @@ class TrafficAndLogMonitor(
         connectClashLogs()
         trafficJob = scope.launch(Dispatchers.IO) {
             while (isActive) {
-                sample()
-                delay(SAMPLE_INTERVAL_MS)
+                if (!paused) {
+                    sample()
+                }
+                delay(if (paused) PAUSED_SAMPLE_INTERVAL_MS else SAMPLE_INTERVAL_MS)
             }
         }
     }
@@ -182,5 +194,6 @@ class TrafficAndLogMonitor(
     companion object {
         private const val CLASH_BASE = "ws://127.0.0.1:9090"
         private const val SAMPLE_INTERVAL_MS = 1000L
+        private const val PAUSED_SAMPLE_INTERVAL_MS = 15_000L
     }
 }

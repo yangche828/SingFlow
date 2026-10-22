@@ -210,9 +210,18 @@ fun DashboardScreen(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
+                            text = "${selectedNode.countryLabel} · ${selectedNode.healthTag} ${selectedNode.healthScore}分",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
                             text = "${selectedNode.server}:${selectedNode.port} · ${formatLatency(selectedNode.latencyMs)}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 } else {

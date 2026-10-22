@@ -262,7 +262,7 @@ class FailoverControllerTest {
     }
 
     @Test
-    fun `slow current latency is treated as failure`() = runTest {
+    fun `slow current latency is not treated as dead`() = runTest {
         val current = node("us1", "US", 70, 100)
         val store = FakeStore(listOf(current))
         val switcher = RecordingSwitcher()
@@ -280,8 +280,10 @@ class FailoverControllerTest {
             FailoverConfig(slowLatencyThresholdMs = 850)
         )
 
-        assertEquals(FailoverOutcome.Action.LOCAL_NETWORK_DOWN, outcome.action)
-        assertTrue(store.updated.isEmpty())
+        assertEquals(FailoverOutcome.Action.HEALTHY, outcome.action)
+        assertEquals(1, store.updated.size)
+        assertEquals(900, store.updated.first().latencyMs)
+        assertNull(switcher.lastNode)
     }
 
     @Test

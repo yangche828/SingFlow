@@ -35,6 +35,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -42,6 +43,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -86,6 +88,7 @@ fun SettingsScreen(
     var showAppPicker by remember { mutableStateOf(false) }
     var showCountryPicker by remember { mutableStateOf(false) }
     var showIntervalPicker by remember { mutableStateOf(false) }
+    var showAdvancedFailover by remember { mutableStateOf(false) }
     var savedHint by remember { mutableStateOf<String?>(null) }
 
     Column(
@@ -303,6 +306,105 @@ fun SettingsScreen(
                         }
                     )
                 }
+                Spacer(modifier = Modifier.height(4.dp))
+                TextButton(
+                    onClick = { showAdvancedFailover = !showAdvancedFailover },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (showAdvancedFailover) "收起细节参数" else "细节参数微调")
+                }
+                if (showAdvancedFailover) {
+                    ParameterSlider(
+                        label = "单次探活超时",
+                        value = settings.failover.singleProbeTimeoutMs,
+                        valueRange = 1000f..5000f,
+                        steps = 7,
+                        unit = "ms"
+                    ) { value ->
+                        onUpdate(
+                            settings.copy(
+                                failover = settings.failover.copy(singleProbeTimeoutMs = value)
+                            )
+                        )
+                    }
+                    ParameterSlider(
+                        label = "连续失败确认次数",
+                        value = settings.failover.failConfirmRetries,
+                        valueRange = 1f..5f,
+                        steps = 3,
+                        unit = "次"
+                    ) { value ->
+                        onUpdate(
+                            settings.copy(
+                                failover = settings.failover.copy(failConfirmRetries = value)
+                            )
+                        )
+                    }
+                    ParameterSlider(
+                        label = "择优健康分差",
+                        value = settings.failover.switchHysteresisScoreDiff,
+                        valueRange = 0f..30f,
+                        steps = 29,
+                        unit = "分"
+                    ) { value ->
+                        onUpdate(
+                            settings.copy(
+                                failover = settings.failover.copy(switchHysteresisScoreDiff = value)
+                            )
+                        )
+                    }
+                    ParameterSlider(
+                        label = "择优延迟改善",
+                        value = settings.failover.switchLatencyToleranceMs,
+                        valueRange = 20f..300f,
+                        steps = 13,
+                        unit = "ms"
+                    ) { value ->
+                        onUpdate(
+                            settings.copy(
+                                failover = settings.failover.copy(switchLatencyToleranceMs = value)
+                            )
+                        )
+                    }
+                    ParameterSlider(
+                        label = "慢速熔断阈值",
+                        value = settings.failover.slowLatencyThresholdMs,
+                        valueRange = 400f..2000f,
+                        steps = 15,
+                        unit = "ms"
+                    ) { value ->
+                        onUpdate(
+                            settings.copy(
+                                failover = settings.failover.copy(slowLatencyThresholdMs = value)
+                            )
+                        )
+                    }
+                    ParameterSlider(
+                        label = "故障冷却时长",
+                        value = settings.failover.deadNodeCooldownMinutes,
+                        valueRange = 1f..60f,
+                        steps = 58,
+                        unit = "分钟"
+                    ) { value ->
+                        onUpdate(
+                            settings.copy(
+                                failover = settings.failover.copy(deadNodeCooldownMinutes = value)
+                            )
+                        )
+                    }
+                    SwitchRow(
+                        title = "允许跨国防灾",
+                        subtitle = "同国全部不可用时，按备用国家顺序切换",
+                        checked = settings.failover.allowCrossCountryFallback,
+                        onCheckedChange = { enabled ->
+                            onUpdate(
+                                settings.copy(
+                                    failover = settings.failover.copy(allowCrossCountryFallback = enabled)
+                                )
+                            )
+                        }
+                    )
+                }
             }
         }
 
@@ -461,6 +563,43 @@ fun SettingsScreen(
                     Text("关闭")
                 }
             }
+        )
+    }
+}
+
+/**
+ * 细节参数滑块：拖动时只更新本地状态，松手后才写入 DataStore，避免频繁落盘。
+ */
+@Composable
+private fun ParameterSlider(
+    label: String,
+    value: Int,
+    valueRange: ClosedFloatingPointRange<Float>,
+    steps: Int,
+    unit: String,
+    onCommit: (Int) -> Unit
+) {
+    var local by remember(value) { mutableFloatStateOf(value.toFloat()) }
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = "${local.toInt()} $unit",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+        Slider(
+            value = local,
+            onValueChange = { local = it },
+            onValueChangeFinished = { onCommit(local.toInt()) },
+            valueRange = valueRange,
+            steps = steps
         )
     }
 }

@@ -4,18 +4,24 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.net.IpPrefix
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
+import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.ProcessLifecycleOwner
 import com.singflow.android.MainActivity
 import com.singflow.android.R
 import com.singflow.android.core.database.JsonHolder
@@ -29,6 +35,9 @@ import com.singflow.android.core.failover.RepositoryNodeStore
 import com.singflow.android.core.model.AppSettings
 import com.singflow.android.core.model.PerAppMode
 import com.singflow.android.core.model.VpnStatus
+import com.singflow.android.core.power.PowerLevel
+import com.singflow.android.core.power.PowerProfile
+import com.singflow.android.core.power.PowerStateController
 import com.singflow.android.core.probe.ClashApiClient
 import com.singflow.android.core.probe.ClashApiNodeProber
 import com.singflow.android.core.probe.MixedProxyNodeProber
@@ -75,6 +84,13 @@ class SingFlowVpnService : VpnService() {
     private var failoverJob: Job? = null
     private var engineJob: Job? = null
     private var networkTracker: UnderlyingNetworkTracker? = null
+    private var notificationJob: Job? = null
+    private var powerStateController: PowerStateController? = null
+    private var screenReceiver: BroadcastReceiver? = null
+    private var powerLifecycleObserver: LifecycleEventObserver? = null
+
+    @Volatile
+    private var currentPowerProfile: PowerProfile = PowerProfile.l1()
 
     private var currentConfig: String = ""
     private var currentNodeId: String = ""
@@ -193,16 +209,8 @@ class SingFlowVpnService : VpnService() {
 
             monitor?.stop()
             monitor = TrafficAndLogMonitor(this@SingFlowVpnService).also { it.start(scope) }
-
-            scope.launch {
-                while (true) {
-                    kotlinx.coroutines.delay(2_000)
-                    val snapshot = VpnStateRepository.snapshot()
-                    if (snapshot.status == VpnStatus.CONNECTED) {
-                        updateNotification()
-                    }
-                }
-            }
+            startPowerAwareness()
+            startNotificationLoop()
 
             VpnStateRepository.setStatus(
                 status = VpnStatus.CONNECTED,
@@ -258,6 +266,92 @@ class SingFlowVpnService : VpnService() {
     }
 
     /**
+     * 注册屏幕 / 前后台 / 省电模式监听，驱动三级功耗状态机。
+     */
+    private fun startPowerAwareness() {
+        if (powerStateController != null) {
+            applyPowerProfile(powerStateController!!.profile.value)
+            return
+        }
+        val controller = PowerStateController(
+            scope = scope,
+            onProfileChanged = { profile -> applyPowerProfile(profile) },
+            idleProbeIntervalSec = currentSettings.failover.activeCheckIntervalSec.takeIf { it > 0 } ?: 180
+        )
+        powerStateController = controller
+        currentPowerProfile = controller.profile.value
+
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED)
+        }
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                when (intent?.action) {
+                    Intent.ACTION_SCREEN_ON -> controller.onScreenOn()
+                    Intent.ACTION_SCREEN_OFF -> controller.onScreenOff()
+                    PowerManager.ACTION_POWER_SAVE_MODE_CHANGED -> {
+                        val powerManager = getSystemService(PowerManager::class.java)
+                        controller.onPowerSaveModeChanged(powerManager?.isPowerSaveMode == true)
+                    }
+                }
+            }
+        }
+        screenReceiver = receiver
+        runCatching {
+            ContextCompat.registerReceiver(
+                this,
+                receiver,
+                filter,
+                ContextCompat.RECEIVER_NOT_EXPORTED
+            )
+        }.onFailure { Log.w(TAG, "register screen receiver failed", it) }
+
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_START -> controller.onForeground()
+                Lifecycle.Event.ON_STOP -> controller.onBackground()
+                else -> Unit
+            }
+        }
+        powerLifecycleObserver = observer
+        val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+        mainHandler.post {
+            runCatching { ProcessLifecycleOwner.get().lifecycle.addObserver(observer) }
+                .onFailure { Log.w(TAG, "observe process lifecycle failed", it) }
+        }
+        applyPowerProfile(controller.profile.value)
+    }
+
+    /**
+     * 应用功耗档位：L3 暂停速率采样、通知刷新与主动巡检。
+     */
+    private fun applyPowerProfile(profile: PowerProfile) {
+        currentPowerProfile = profile
+        monitor?.setPaused(profile.trafficSampleIntervalMs == 0L)
+        Log.i(TAG, "power profile -> ${profile.level}")
+        VpnStateRepository.addLog("DEBUG", "功耗档位：${profile.level}")
+        startNotificationLoop()
+    }
+
+    /**
+     * 通知栏刷新循环；档位变化会重启本循环以应用新的刷新间隔。
+     */
+    private fun startNotificationLoop() {
+        notificationJob?.cancel()
+        notificationJob = scope.launch {
+            while (isActive) {
+                val interval = currentPowerProfile.notificationIntervalMs
+                delay(if (interval > 0) interval else 60_000L)
+                if (interval > 0 && VpnStateRepository.snapshot().status == VpnStatus.CONNECTED) {
+                    updateNotification()
+                }
+            }
+        }
+    }
+
+    /**
      * 注册物理网络监听；Wi-Fi ↔ 5G 切换时重新绑定 VPN 底层网络。
      */
     private fun startNetworkTracker() {
@@ -308,6 +402,11 @@ class SingFlowVpnService : VpnService() {
                 localNetwork = localNetworkVerifier
             )
             while (isActive && VpnStateRepository.snapshot().status == VpnStatus.CONNECTED) {
+                if (currentPowerProfile.level == PowerLevel.L3_SCREEN_OFF) {
+                    // 息屏深度休眠：暂停所有主动探活，让基带进入休眠。
+                    delay(POWER_SAVE_RECHECK_MS)
+                    continue
+                }
                 val current = nodeRepository.getById(currentNodeId)
                 if (current == null) {
                     VpnStateRepository.addLog("WARN", "自动切换：找不到当前节点 $currentNodeId，跳过本轮")
@@ -534,6 +633,19 @@ class SingFlowVpnService : VpnService() {
         failoverJob = null
         engineJob?.cancel()
         engineJob = null
+        notificationJob?.cancel()
+        notificationJob = null
+        screenReceiver?.let { receiver ->
+            runCatching { unregisterReceiver(receiver) }
+        }
+        screenReceiver = null
+        powerLifecycleObserver?.let { observer ->
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                runCatching { ProcessLifecycleOwner.get().lifecycle.removeObserver(observer) }
+            }
+        }
+        powerLifecycleObserver = null
+        powerStateController = null
         networkTracker?.unregister()
         networkTracker = null
         runCatching { bridge?.stop() }
@@ -676,6 +788,9 @@ class SingFlowVpnService : VpnService() {
 
         /** 用户选择「仅被动触发」时的兜底巡检周期。 */
         private const val DEFAULT_PASSIVE_CHECK_INTERVAL_SEC = 180
+
+        /** 息屏休眠期间巡检协程的唤醒间隔（不做网络探测）。 */
+        private const val POWER_SAVE_RECHECK_MS = 15_000L
 
         /** 启动 VPN 服务（调用方需已完成 VpnService.prepare）。 */
         fun start(context: Context, configJson: String, nodeId: String, nodeName: String, settings: AppSettings) {

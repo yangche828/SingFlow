@@ -1,0 +1,8 @@
+== R5 省电/主页/参数验收 2026-10-23T02:20:35.4263890+08:00 ==
+10-22 18:18:56.884  5272  5301 I SingFlowVpnService: power profile -> L1_FOREGROUND
+10-22 18:19:05.871  5272  5303 I SingFlowVpnService: failover: action=HEALTHY 当前节点健康，未达到择优切换门槛
+10-22 18:19:36.792  5272  5303 I SingFlowVpnService: failover: action=HEALTHY 当前节点健康，未达到择优切换门槛
+10-22 18:20:02.019  5272  5272 I SingFlowVpnService: power profile -> L2_BACKGROUND_SCREEN_ON
+10-22 18:20:07.678  5272  5303 I SingFlowVpnService: failover: action=HEALTHY 当前节点健康，未达到择优切换门槛
+10-22 18:20:17.021  5272  5303 I SingFlowVpnService: power profile -> L3_SCREEN_OFF
+10-22 18:20:22.319  5272  5272 I SingFlowVpnService: power profile -> L1_FOREGROUND

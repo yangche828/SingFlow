@@ -69,7 +69,9 @@ class FailoverController(
         for (attempt in 1..retries) {
             val result = currentProber.probe(currentNode, timeout)
             currentResult = result
-            if (result.success && result.latencyMs in 1..config.slowLatencyThresholdMs) {
+            // 只要拿到有效响应就算存活；超过慢速阈值只影响择优切换，
+            // 不能当成「节点已死」反复扣分（否则健康分会长期归零）。
+            if (result.success) {
                 currentAlive = true
                 break
             }

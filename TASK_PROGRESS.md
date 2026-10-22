@@ -340,3 +340,37 @@ AFTER_204=204
 2. 省电状态机接入服务：息屏 15s 暂停速率采样/通知刷新/主动巡检，亮屏恢复。
 3. 主页展示当前国家、健康分与节点名；订阅自动更新 Worker。
 4. 为 `UnderlyingNetworkTracker`、应用规则热重载补回归测试/脚本断言。
+
+### R5：三级省电接入服务、七项参数面板与慢速节点判定修复（已完成）
+
+| 模块 | 交付内容 | 验证 |
+| :--- | :--- | :--- |
+| 省电接入 | `SingFlowVpnService` 注册屏幕/省电广播（`RECEIVER_NOT_EXPORTED`）与 `ProcessLifecycleOwner` 前后台观察，驱动 `PowerStateController`；L3 暂停速率采样、通知刷新与主动巡检，亮屏恢复 | API 33：L1 → L2 → 15s 后 L3 → 亮屏 L1 |
+| 采样暂停 | `TrafficAndLogMonitor.setPaused()`：L3 停止每秒采样，降低基带与 UI 唤醒 | 日志 + 代码 |
+| 通知循环 | 修复原先 `while(true)` 通知协程无法取消的问题：改为 `notificationJob`，按功耗档位重启（L2 3s / L3 60s 空转），reload/stop 可取消 | 代码审查 |
+| 参数面板 | 设置页新增「细节参数微调」：探活超时、失败确认次数、择优分差、延迟改善、慢速阈值、冷却时长 6 个滑块 + 跨国防灾开关；拖动仅更新本地状态，松手才落盘 | 截图 |
+| 主页 | 当前节点卡片新增国家/地区与健康标签/分数（如「日本 B · 日本 · 健康 78分」） | 截图 |
+| 缺陷修复 | 探活成功但 RTT 超过慢速阈值时不再判定「节点已死」并反复扣分（此前会把健康分打到 0），慢速只影响择优切换 | `FailoverControllerTest` 更新并通过 |
+| 生命周期修复 | `ProcessLifecycleOwner.addObserver` 必须在主线程调用，否则抛 `IllegalStateException`；改为主线程 Handler post | 运行时无该异常 |
+
+**运行时日志**：
+
+```text
+18:18:56 power profile -> L1_FOREGROUND
+18:19:05 failover: action=HEALTHY
+18:20:02 power profile -> L2_BACKGROUND_SCREEN_ON
+18:20:17 power profile -> L3_SCREEN_OFF
+18:20:22 power profile -> L1_FOREGROUND（唤醒）
+```
+
+息屏 L3 期间 35 秒内无任何 `failover:` 探活日志（前一轮验证），满足「息屏停止主动探活」。
+
+证据：`acceptance/r5_power_runtime.log`、`acceptance/r5_failover_advanced.png`、
+`acceptance/r5_home_node_health.png`。
+
+### 下一轮（R6）
+
+1. 连接诊断面板：当前 Selector、最近分流命中、延迟历史。
+2. 订阅自动更新 Worker（WorkManager 或前台服务）与订阅元数据展示。
+3. 节点导出/二维码、配置备份与恢复。
+4. 为省电档位切换、监控暂停/恢复补服务级回归测试。
