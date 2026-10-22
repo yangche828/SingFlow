@@ -7,6 +7,8 @@ import com.singflow.android.core.probe.ClashCountedLabel
 import com.singflow.android.core.probe.ClashProxyGroup
 import com.singflow.android.core.probe.ClashStats
 import com.singflow.android.core.probe.ClashTraffic
+import com.singflow.android.core.probe.LatencyHistoryStore
+import com.singflow.android.core.probe.LatencySample
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -42,6 +44,7 @@ class DiagnosticsViewModel @Inject constructor(
         val traffic: ClashTraffic? = null,
         val ruleHits: List<ClashCountedLabel> = emptyList(),
         val chainHits: List<ClashCountedLabel> = emptyList(),
+        val latencyHistory: List<LatencySample> = emptyList(),
         val lastUpdated: Long = 0L
     )
 
@@ -51,6 +54,13 @@ class DiagnosticsViewModel @Inject constructor(
     val state: StateFlow<UiState> = _state.asStateFlow()
 
     private var pollingJob: Job? = null
+    private var currentNodeId: String = ""
+
+    /** 绑定当前节点，用于读取延迟历史。 */
+    fun bindNode(nodeId: String?) {
+        currentNodeId = nodeId.orEmpty()
+        _state.update { it.copy(latencyHistory = LatencyHistoryStore.samples(currentNodeId)) }
+    }
 
     /** 开始每 2 秒轮询（页面可见时调用，重复调用幂等）。 */
     fun startPolling() {
@@ -101,6 +111,7 @@ class DiagnosticsViewModel @Inject constructor(
                 traffic = traffic,
                 ruleHits = ClashStats.ruleHits(connections),
                 chainHits = ClashStats.chainHits(connections),
+                latencyHistory = LatencyHistoryStore.samples(currentNodeId),
                 lastUpdated = System.currentTimeMillis()
             )
         }

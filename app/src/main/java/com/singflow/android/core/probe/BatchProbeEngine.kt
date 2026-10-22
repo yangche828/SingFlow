@@ -66,6 +66,9 @@ class BatchProbeEngine(
             async(Dispatchers.IO) {
                 semaphore.withPermit {
                     val result = prober.probe(node, timeoutMs)
+                    if (result.success) {
+                        LatencyHistoryStore.record(node.id, result.latencyMs, result.checkedAtMs)
+                    }
                     store.update(
                         NodeHealthScorer.evaluateAfterProbe(
                             node = node,

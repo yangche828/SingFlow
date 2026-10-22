@@ -24,6 +24,7 @@ import com.singflow.android.core.parser.UniversalImportManager
 import com.singflow.android.core.probe.BatchProbeEngine
 import com.singflow.android.core.probe.ClashApiClient
 import com.singflow.android.core.probe.ClashApiNodeProber
+import com.singflow.android.core.probe.LatencyHistoryStore
 import com.singflow.android.core.probe.MixedProxyNodeProber
 import com.singflow.android.core.subscription.SubscriptionManager
 import okhttp3.OkHttpClient
@@ -253,6 +254,9 @@ class MainViewModel @Inject constructor(
             } else {
                 val results = latencyTester.testAll(list) { id, latency ->
                     nodeRepository.updateLatency(id, latency)
+                    if (latency > 0) {
+                        LatencyHistoryStore.record(id, latency)
+                    }
                 }
                 _testing.value = false
                 val elapsed = System.currentTimeMillis() - started

@@ -4,6 +4,7 @@ import com.singflow.android.core.model.FailoverConfig
 import com.singflow.android.core.model.FailoverPreset
 import com.singflow.android.core.model.ProxyNode
 import com.singflow.android.core.probe.NodeProber
+import com.singflow.android.core.probe.LatencyHistoryStore
 import com.singflow.android.core.probe.ProbeResult
 import com.singflow.android.core.scorer.NodeHealthScorer
 import kotlinx.coroutines.delay
@@ -76,6 +77,10 @@ class FailoverController(
                 break
             }
             if (attempt < retries) sleeper(RETRY_INTERVAL_MS)
+        }
+
+        if (currentAlive) {
+            LatencyHistoryStore.record(currentNode.id, currentResult?.latencyMs ?: -1)
         }
 
         return if (!currentAlive) {

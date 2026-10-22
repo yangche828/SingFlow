@@ -1,5 +1,6 @@
 package com.singflow.android.ui.screens
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,6 +28,8 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -36,6 +39,7 @@ import com.singflow.android.core.model.ProxyNode
 import com.singflow.android.core.model.VpnState
 import com.singflow.android.core.probe.ClashConnection
 import com.singflow.android.core.probe.ClashProxyGroup
+import com.singflow.android.core.probe.LatencySample
 import com.singflow.android.ui.DiagnosticsViewModel
 import com.singflow.android.ui.components.formatBytes
 
@@ -55,7 +59,8 @@ fun DiagnosticsScreen(
 ) {
     val state by diagnosticsViewModel.state.collectAsStateWithLifecycle()
 
-    DisposableEffect(Unit) {
+    DisposableEffect(selectedNode?.id) {
+        diagnosticsViewModel.bindNode(selectedNode?.id)
         diagnosticsViewModel.startPolling()
         onDispose { diagnosticsViewModel.stopPolling() }
     }
@@ -98,6 +103,13 @@ fun DiagnosticsScreen(
             item(key = "status") {
                 StatusCard(vpnState = vpnState, selectedNode = selectedNode)
                 Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            if (state.latencyHistory.size >= 2) {
+                item(key = "latency-history") {
+                    LatencyTrendCard(state.latencyHistory)
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
             }
 
             if (!state.available) {
@@ -192,6 +204,68 @@ fun DiagnosticsScreen(
                         ConnectionRow(connection)
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LatencyTrendCard(samples: List<LatencySample>) {
+    val latest = samples.last().latencyMs
+    val min = samples.minOf { it.latencyMs }
+    val max = samples.maxOf { it.latencyMs }
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+        )
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "当前节点延迟趋势",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = "$latest ms",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = "最近 ${samples.size} 次 · 最低 $min ms · 最高 $max ms",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            val lineColor = MaterialTheme.colorScheme.primary
+            Canvas(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(96.dp)
+            ) {
+                if (samples.size < 2) return@Canvas
+                val span = (max - min).coerceAtLeast(1)
+                val stepX = size.width / (samples.size - 1)
+                var previous: Offset? = null
+                samples.forEachIndexed { index, sample ->
+                    val x = stepX * index
+                    val y = size.height * (1f - (sample.latencyMs - min).toFloat() / span)
+                    val point = Offset(x, y)
+                    previous?.let { start ->
+                        drawLine(
+                            color = lineColor,
+                            start = start,
+                            end = point,
+                            strokeWidth = 4f,
+                            cap = StrokeCap.Round
+                        )
+                    }
+                    drawCircle(color = lineColor, radius = 3.5f, center = point)
+                    previous = point
                 }
             }
         }

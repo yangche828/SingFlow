@@ -1,0 +1,5 @@
+== R17 延迟历史曲线验收 ==
+probe=一键探活 x2 (Clash API)
+history=2 samples min=186ms max=274ms latest=186ms
+chart=诊断页当前节点延迟趋势 (Canvas 折线)
+screenshot=acceptance/r17_latency_history.png

@@ -676,3 +676,29 @@ active_connections=25
 2. 节点详情页（配置预览、分享、延迟趋势）。
 3. 订阅更新保留收藏/健康统计的端到端测试。
 4. 节点延迟历史环形缓冲与诊断曲线。
+
+### R17：节点延迟历史与诊断曲线（已完成）
+
+| 模块 | 交付内容 | 验证 |
+| :--- | :--- | :--- |
+| 环形缓冲 | `LatencyHistoryStore`：每节点保留最近 40 次成功采样，进程内不落盘 | 3 个单测 |
+| 采样来源 | Failover 巡检、批量探活引擎、TCP 测速均写入历史 | 代码 |
+| 诊断 UI | 诊断页新增「当前节点延迟趋势」Canvas 折线，显示最近 N 次、最低/最高/最新延迟 | 截图 |
+| 绑定节点 | `DiagnosticsViewModel.bindNode()`：切换节点时重绑历史并刷新 | 运行 |
+
+**运行时验收**：
+
+```text
+probe=一键探活 x2（Clash API）
+history=2 samples min=186ms max=274ms latest=186ms
+chart=诊断页当前节点延迟趋势（Canvas 折线）
+```
+
+证据：`acceptance/r17_latency_history.png`、`acceptance/r17_latency_history_runtime.log`。
+
+### 下一轮（R18）
+
+1. 节点分组拖拽排序（收藏组/国家组）。
+2. 节点详情页（配置预览、分享、延迟趋势复用）。
+3. 订阅更新保留收藏/健康统计的端到端测试。
+4. 延迟历史落盘（可选）与断线期间的空洞标记。
