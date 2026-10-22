@@ -2,6 +2,7 @@ package com.singflow.android
 
 import android.app.Application
 import android.util.Log
+import com.singflow.android.core.subscription.SubscriptionWorkScheduler
 import dagger.hilt.android.HiltAndroidApp
 import java.io.File
 import java.io.PrintWriter
@@ -26,6 +27,7 @@ class SingFlowApp : Application() {
         prepareWorkingDirectories()
         installRuleSets()
         installCrashHandler()
+        SubscriptionWorkScheduler.schedule(this)
     }
 
     /**

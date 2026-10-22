@@ -1,0 +1,6 @@
+== R6 订阅导入/自动更新验收 2026-10-23T02:35:34.0225351+08:00 ==
+subscription=[('127.0.0.1', 'http://127.0.0.1:8088/sub', 104857600, 536870912, 107374182400, 1767225600)]
+node_groups=[('222cf376-80a4-4ad7-86b0-0bd0d4483d0c', 2), ('adb', 4)]
+workspec=[('com.singflow.android.core.subscription.SubscriptionUpdateWorker', 43200000, 0)]
+worker_log=refresh 127.0.0.1: true 已更新 2 个节点
+screenshot=acceptance/r6_subscription_list.png

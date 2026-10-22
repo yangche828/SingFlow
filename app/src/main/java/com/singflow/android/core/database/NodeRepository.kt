@@ -39,6 +39,10 @@ class NodeRepository(
     suspend fun getByCountry(countryCode: String): List<ProxyNode> =
         nodeDao.getByCountry(countryCode).map { it.toDomainSafe() }
 
+    /** 读取某个订阅/分组下的节点。 */
+    suspend fun getByGroup(groupId: String): List<ProxyNode> =
+        nodeDao.getByGroup(groupId).map { it.toDomainSafe() }
+
     /** 读取自动切换候选。 */
     suspend fun getHealthyCandidates(
         nowMs: Long = System.currentTimeMillis(),

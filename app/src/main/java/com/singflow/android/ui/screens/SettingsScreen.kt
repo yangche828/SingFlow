@@ -70,7 +70,9 @@ import kotlinx.coroutines.withContext
  * @param settings 当前设置
  * @param countries 节点库中实际存在的国家/地区（代码 to 中文名），用于默认国家选择
  * @param appRuleCount 已设置的应用分流规则数量
+ * @param subscriptionCount 订阅数量
  * @param onOpenAppRouting 打开应用级国家分流页面
+ * @param onOpenSubscriptions 打开订阅管理页面
  * @param onUpdate 保存设置
  */
 @Composable
@@ -78,7 +80,9 @@ fun SettingsScreen(
     settings: AppSettings,
     countries: List<Pair<String, String>> = emptyList(),
     appRuleCount: Int = 0,
+    subscriptionCount: Int = 0,
     onOpenAppRouting: () -> Unit = {},
+    onOpenSubscriptions: () -> Unit = {},
     onUpdate: (AppSettings) -> Unit
 ) {
     var remoteDns by remember(settings.remoteDns) { mutableStateOf(settings.remoteDns) }
@@ -216,6 +220,15 @@ fun SettingsScreen(
                 Icon(Icons.Rounded.Apps, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("按应用指定国家（已设置 $appRuleCount 个）")
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            OutlinedButton(
+                onClick = onOpenSubscriptions,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Rounded.RestartAlt, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("订阅管理（$subscriptionCount 个，12 小时自动更新）")
             }
             Spacer(modifier = Modifier.height(6.dp))
             Text(

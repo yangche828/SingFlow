@@ -374,3 +374,32 @@ AFTER_204=204
 2. 订阅自动更新 Worker（WorkManager 或前台服务）与订阅元数据展示。
 3. 节点导出/二维码、配置备份与恢复。
 4. 为省电档位切换、监控暂停/恢复补服务级回归测试。
+
+### R6：订阅管理、流量元数据与 WorkManager 自动更新（已完成）
+
+| 模块 | 交付内容 | 验证 |
+| :--- | :--- | :--- |
+| 订阅核心 | `SubscriptionManager`：新增/刷新/删除订阅，支持多行链接、整段 Base64、sing-box JSON；5 MiB 内容上限；按 `configHash` 保留节点健康统计并清理订阅内失效节点 | 本地订阅源导入 2 节点 |
+| 流量元数据 | `SubscriptionUserInfo` 解析 `Subscription-Userinfo`（upload/download/total/expire），订阅卡展示已用/总量/到期 | 612 MB / 100 GB，到期 2026-01-01 |
+| 自动更新 | `SubscriptionUpdateWorker`（12 小时周期、联网约束、唯一任务）+ `SubscriptionWorkScheduler`，失败返回 retry；使用 Hilt `EntryPoint`，不引入 hilt-work | `WorkSpec` interval=43200000，强制运行成功 |
+| UI | 新增 `SubscriptionsScreen`：订阅列表、添加对话框、立即更新、删除确认、自动更新开关；设置页新增订阅入口 | 截图 |
+| 数据层 | `SubscriptionDao.getAll/getById`、`NodeDao.getByGroup`、`NodeRepository.getByGroup` | 编译 + 运行 |
+
+**运行时验收**：
+
+```text
+subscription=[('127.0.0.1','http://127.0.0.1:8088/sub',104857600,536870912,107374182400,1767225600)]
+node_groups=[('222cf376-...',2),('adb',4)]
+WorkSpec=[('SubscriptionUpdateWorker',43200000,0)]
+worker_log=refresh 127.0.0.1: true 已更新 2 个节点
+```
+
+证据：`acceptance/r6_subscription_runtime.log`、`acceptance/r6_subscription_list.png`、
+`scripts/dev/subscription-server.js`。
+
+### 下一轮（R7）
+
+1. 连接诊断面板：当前 Selector、最近分流命中、延迟历史。
+2. 节点导出/二维码、配置备份与恢复。
+3. 订阅增量更新测试（节点增删对比）与 Worker 失败重试策略细化。
+4. 为省电档位切换、监控暂停/恢复补服务级回归测试。

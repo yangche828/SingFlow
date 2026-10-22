@@ -89,6 +89,23 @@ object DatabaseModule {
         return SingBoxConfigPipeline(json)
     }
 
+    /** 订阅管理器。 */
+    @Provides
+    @Singleton
+    fun provideSubscriptionManager(
+        subscriptionDao: SubscriptionDao,
+        nodeRepository: NodeRepository,
+        importManager: UniversalImportManager,
+        okHttpClient: OkHttpClient
+    ): com.singflow.android.core.subscription.SubscriptionManager {
+        return com.singflow.android.core.subscription.SubscriptionManager(
+            dao = subscriptionDao,
+            nodeRepository = nodeRepository,
+            importManager = importManager,
+            client = okHttpClient
+        )
+    }
+
     /** 共享 OkHttp 客户端（测速 / Clash API）。 */
     @Provides
     @Singleton

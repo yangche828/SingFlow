@@ -8,6 +8,7 @@ import com.singflow.android.core.database.AppRouteRuleEntity
 import com.singflow.android.core.database.AppRouteRuleRepository
 import com.singflow.android.core.database.NodeRepository
 import com.singflow.android.core.database.PreferencesManager
+import com.singflow.android.core.database.SubscriptionEntity
 import com.singflow.android.core.engine.NodeLatencyTester
 import com.singflow.android.core.engine.VpnControl
 import com.singflow.android.core.engine.VpnStateRepository
@@ -21,6 +22,7 @@ import com.singflow.android.core.parser.UniversalImportManager
 import com.singflow.android.core.probe.BatchProbeEngine
 import com.singflow.android.core.probe.ClashApiClient
 import com.singflow.android.core.probe.ClashApiNodeProber
+import com.singflow.android.core.subscription.SubscriptionManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,7 +46,8 @@ class MainViewModel @Inject constructor(
     private val configPipeline: SingBoxConfigPipeline,
     private val latencyTester: NodeLatencyTester,
     private val clashApiClient: ClashApiClient,
-    private val appRouteRuleRepository: AppRouteRuleRepository
+    private val appRouteRuleRepository: AppRouteRuleRepository,
+    private val subscriptionManager: SubscriptionManager
 ) : ViewModel() {
 
     /** 全部节点。 */
@@ -53,6 +56,10 @@ class MainViewModel @Inject constructor(
 
     /** 应用级国家分流规则。 */
     val appRouteRules: StateFlow<List<AppRouteRuleEntity>> = appRouteRuleRepository.observeAll()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** 订阅列表。 */
+    val subscriptions: StateFlow<List<SubscriptionEntity>> = subscriptionManager.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** 全局设置。 */
@@ -274,6 +281,54 @@ class MainViewModel @Inject constructor(
     /** 更新设置。 */
     fun updateSettings(transform: (AppSettings) -> AppSettings) {
         viewModelScope.launch { preferencesManager.update(transform) }
+    }
+
+    // ---------------------------------------------------------------------
+    // 订阅管理
+    // ---------------------------------------------------------------------
+
+    /** 新增订阅并立即拉取。 */
+    fun addSubscription(name: String, url: String) {
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) { subscriptionManager.add(name, url) }
+            _message.value = result.message
+        }
+    }
+
+    /** 刷新单个订阅。 */
+    fun refreshSubscription(id: String) {
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) { subscriptionManager.refresh(id) }
+            _message.value = result.message
+        }
+    }
+
+    /** 刷新全部订阅。 */
+    fun refreshAllSubscriptions() {
+        viewModelScope.launch {
+            val results = withContext(Dispatchers.IO) { subscriptionManager.refreshAll() }
+            val success = results.count { it.success }
+            _message.value = if (results.isEmpty()) {
+                "暂无订阅"
+            } else {
+                "订阅更新完成：$success/${results.size} 成功"
+            }
+        }
+    }
+
+    /** 删除订阅及其节点。 */
+    fun deleteSubscription(id: String) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { subscriptionManager.delete(id) }
+            _message.value = "订阅已删除"
+        }
+    }
+
+    /** 切换订阅自动更新。 */
+    fun setSubscriptionAutoUpdate(id: String, enabled: Boolean) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { subscriptionManager.setAutoUpdate(id, enabled) }
+        }
     }
 
     /**

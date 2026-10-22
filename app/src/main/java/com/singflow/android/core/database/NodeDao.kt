@@ -40,6 +40,10 @@ interface NodeDao {
     @Query("SELECT * FROM nodes WHERE countryCode = :country ORDER BY isFavorite DESC, healthScore DESC")
     suspend fun getByCountry(country: String): List<NodeEntity>
 
+    /** 查询某订阅/分组下的节点。 */
+    @Query("SELECT * FROM nodes WHERE groupId = :groupId ORDER BY createdAt ASC")
+    suspend fun getByGroup(groupId: String): List<NodeEntity>
+
     /**
      * 查询可参与自动切换的健康候选：未处于冷却期且健康分达标。
      */

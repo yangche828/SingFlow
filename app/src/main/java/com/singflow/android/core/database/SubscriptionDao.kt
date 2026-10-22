@@ -14,6 +14,12 @@ interface SubscriptionDao {
     @Query("SELECT * FROM subscriptions ORDER BY lastUpdated DESC")
     fun observeAll(): Flow<List<SubscriptionEntity>>
 
+    @Query("SELECT * FROM subscriptions ORDER BY lastUpdated DESC")
+    suspend fun getAll(): List<SubscriptionEntity>
+
+    @Query("SELECT * FROM subscriptions WHERE id = :id LIMIT 1")
+    suspend fun getById(id: String): SubscriptionEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(subscription: SubscriptionEntity)
 

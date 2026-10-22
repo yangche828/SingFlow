@@ -37,6 +37,7 @@ import com.singflow.android.ui.screens.DashboardScreen
 import com.singflow.android.ui.screens.LogsScreen
 import com.singflow.android.ui.screens.NodesScreen
 import com.singflow.android.ui.screens.SettingsScreen
+import com.singflow.android.ui.screens.SubscriptionsScreen
 import kotlinx.coroutines.launch
 
 /**
@@ -60,6 +61,7 @@ fun SingFlowRoot(viewModel: MainViewModel) {
     val importMessage by viewModel.importMessage.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val appRouteRules by viewModel.appRouteRules.collectAsStateWithLifecycle()
+    val subscriptions by viewModel.subscriptions.collectAsStateWithLifecycle()
 
     var showImportSheet by remember { mutableStateOf(false) }
 
@@ -176,8 +178,14 @@ fun SingFlowRoot(viewModel: MainViewModel) {
                     settings = settings,
                     countries = countries,
                     appRuleCount = appRouteRules.size,
+                    subscriptionCount = subscriptions.size,
                     onOpenAppRouting = {
                         navController.navigate("app-routing") {
+                            launchSingleTop = true
+                        }
+                    },
+                    onOpenSubscriptions = {
+                        navController.navigate("subscriptions") {
                             launchSingleTop = true
                         }
                     },
@@ -192,6 +200,19 @@ fun SingFlowRoot(viewModel: MainViewModel) {
                     onBack = { navController.popBackStack() },
                     onSave = { rule -> viewModel.saveAppRouteRule(context, rule) },
                     onDelete = { packageName -> viewModel.deleteAppRouteRule(context, packageName) }
+                )
+            }
+            composable("subscriptions") {
+                SubscriptionsScreen(
+                    subscriptions = subscriptions,
+                    onBack = { navController.popBackStack() },
+                    onAdd = { name, url -> viewModel.addSubscription(name, url) },
+                    onRefresh = { id -> viewModel.refreshSubscription(id) },
+                    onRefreshAll = { viewModel.refreshAllSubscriptions() },
+                    onDelete = { id -> viewModel.deleteSubscription(id) },
+                    onToggleAutoUpdate = { id, enabled ->
+                        viewModel.setSubscriptionAutoUpdate(id, enabled)
+                    }
                 )
             }
         }
