@@ -94,6 +94,7 @@ fun ExportBackupScreen(
     var showWebDavDialog by remember { mutableStateOf(false) }
     var backupPassphrase by remember { mutableStateOf("") }
     var gzipBackup by remember { mutableStateOf(false) }
+    var pendingSingBoxNodes by remember { mutableStateOf<List<ProxyNode>>(emptyList()) }
 
     val exportTo: (android.net.Uri?) -> Unit = { uri ->
         if (uri != null) {
@@ -133,6 +134,23 @@ fun ExportBackupScreen(
     val gzipExportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/gzip")
     ) { uri -> exportTo(uri) }
+
+    val singBoxLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri != null) {
+            runCatching {
+                val content = SelectedNodeExporter.toSingBoxConfig(pendingSingBoxNodes)
+                context.contentResolver.openOutputStream(uri)?.use { output ->
+                    output.write(content.toByteArray(Charsets.UTF_8))
+                } ?: error("无法写入文件")
+            }.onSuccess {
+                backupViewModel.notify("sing-box 配置已导出（${pendingSingBoxNodes.size} 个节点）")
+            }.onFailure {
+                backupViewModel.notify("导出失败：${it.message}")
+            }
+        }
+    }
 
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
@@ -376,6 +394,20 @@ fun ExportBackupScreen(
             ) {
                 Text("高分订阅（${highScorePool.size}）")
             }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedButton(
+            onClick = {
+                if (favoritePool.isEmpty()) {
+                    backupViewModel.notify("没有可导出的收藏节点")
+                } else {
+                    pendingSingBoxNodes = favoritePool
+                    singBoxLauncher.launch("singflow-outbounds.json")
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("导出收藏 sing-box 配置（含凭据，注意保管）")
         }
 
         Spacer(modifier = Modifier.height(18.dp))

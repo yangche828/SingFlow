@@ -1133,3 +1133,19 @@ restore=恢复完成：6 个节点、1 个订阅、1 条应用规则
 2. 订阅 Worker 全流程集成测试（Room + MockWebServer）。
 3. 精选节点导出为 sing-box JSON 文件（SAF）。
 4. 受信任 Wi-Fi（SSID）自动化策略。
+
+### R37：精选节点导出 sing-box JSON（已完成）
+
+| 模块 | 交付内容 | 验证 |
+| :--- | :--- | :--- |
+| 生成器 | `SelectedNodeExporter.toSingBoxConfig()`：最小 1.14 配置（local DNS、mixed 入站、节点 outbounds、direct、sniff 规则） | 单测解析 |
+| UI | 精选导出区新增「导出收藏 sing-box 配置」，SAF 保存 `singflow-outbounds.json` | 编译 |
+| 安全提示 | 按钮文案提示配置含凭据，需妥善保管 | 代码 |
+| 单元测试 | 校验 outbounds 数量/tag、DNS 类型、`default_domain_resolver` | 通过 |
+
+### 下一轮（R38）
+
+1. 连接详情按域名加入分流规则。
+2. 订阅 Worker 全流程集成测试（Room + MockWebServer）。
+3. 受信任 Wi-Fi（SSID）自动化策略。
+4. 诊断报告中的 subscriptions 信息补全。
