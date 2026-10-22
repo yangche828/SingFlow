@@ -1,0 +1,6 @@
+== R18 节点详情页验收 ==
+entry=主页当前节点卡片 info 图标
+fields=country/health/latency/probe success/EMA-jitter/last probe/egress IP/current marker
+detail_actions=收藏切换、设为当前节点、复制/分享二维码、删除确认
+empty_history_hint=暂无历史采样提示
+screenshot=acceptance/r18_node_detail.png

@@ -21,6 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Article
 import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -60,7 +61,8 @@ fun DashboardScreen(
     onToggleConnection: () -> Unit,
     onRoutingModeChange: (RoutingMode) -> Unit,
     onOpenNodes: () -> Unit,
-    onOpenLogs: () -> Unit
+    onOpenLogs: () -> Unit,
+    onOpenNodeDetail: (ProxyNode) -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -234,6 +236,15 @@ fun DashboardScreen(
                             text = "点击进入节点库导入或生成示例节点",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                if (selectedNode != null) {
+                    IconButton(onClick = { onOpenNodeDetail(selectedNode) }) {
+                        Icon(
+                            imageVector = Icons.Rounded.Info,
+                            contentDescription = "节点详情",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }

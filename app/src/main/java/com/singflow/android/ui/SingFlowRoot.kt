@@ -38,6 +38,7 @@ import com.singflow.android.ui.screens.DiagnosticsScreen
 import com.singflow.android.ui.screens.ExportBackupScreen
 import com.singflow.android.ui.screens.LogsScreen
 import com.singflow.android.ui.screens.NodesScreen
+import com.singflow.android.ui.screens.NodeDetailScreen
 import com.singflow.android.ui.screens.SettingsScreen
 import com.singflow.android.ui.screens.SubscriptionsScreen
 import kotlinx.coroutines.launch
@@ -140,6 +141,35 @@ fun SingFlowRoot(viewModel: MainViewModel) {
                     onOpenLogs = {
                         navController.navigate("logs") {
                             launchSingleTop = true
+                        }
+                    },
+                    onOpenNodeDetail = { node ->
+                        navController.navigate("node-detail/${node.id}") {
+                            launchSingleTop = true
+                        }
+                    }
+                )
+            }
+            composable("node-detail/{nodeId}") { entry ->
+                val nodeId = entry.arguments?.getString("nodeId").orEmpty()
+                val node = nodes.firstOrNull { it.id == nodeId }
+                NodeDetailScreen(
+                    node = node,
+                    isSelected = selectedNode?.id == nodeId,
+                    onBack = { navController.popBackStack() },
+                    onSetCurrent = {
+                        if (node != null) {
+                            viewModel.selectNode(context, node)
+                            navController.popBackStack()
+                        }
+                    },
+                    onToggleFavorite = {
+                        if (node != null) viewModel.toggleFavorite(node)
+                    },
+                    onDelete = {
+                        if (node != null) {
+                            viewModel.deleteNode(node.id)
+                            navController.popBackStack()
                         }
                     }
                 )

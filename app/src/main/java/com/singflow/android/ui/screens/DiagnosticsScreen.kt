@@ -1,6 +1,5 @@
 package com.singflow.android.ui.screens
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -28,8 +27,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -40,6 +37,7 @@ import com.singflow.android.core.model.VpnState
 import com.singflow.android.core.probe.ClashConnection
 import com.singflow.android.core.probe.ClashProxyGroup
 import com.singflow.android.core.probe.LatencySample
+import com.singflow.android.ui.components.LatencySparkline
 import com.singflow.android.ui.DiagnosticsViewModel
 import com.singflow.android.ui.components.formatBytes
 
@@ -242,32 +240,13 @@ private fun LatencyTrendCard(samples: List<LatencySample>) {
             )
             Spacer(modifier = Modifier.height(8.dp))
             val lineColor = MaterialTheme.colorScheme.primary
-            Canvas(
+            LatencySparkline(
+                samples = samples,
+                color = lineColor,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(96.dp)
-            ) {
-                if (samples.size < 2) return@Canvas
-                val span = (max - min).coerceAtLeast(1)
-                val stepX = size.width / (samples.size - 1)
-                var previous: Offset? = null
-                samples.forEachIndexed { index, sample ->
-                    val x = stepX * index
-                    val y = size.height * (1f - (sample.latencyMs - min).toFloat() / span)
-                    val point = Offset(x, y)
-                    previous?.let { start ->
-                        drawLine(
-                            color = lineColor,
-                            start = start,
-                            end = point,
-                            strokeWidth = 4f,
-                            cap = StrokeCap.Round
-                        )
-                    }
-                    drawCircle(color = lineColor, radius = 3.5f, center = point)
-                    previous = point
-                }
-            }
+            )
         }
     }
 }
