@@ -5,9 +5,11 @@ import android.content.Intent
 import android.graphics.drawable.Icon
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
+import android.widget.Toast
 import com.singflow.android.MainActivity
 import com.singflow.android.R
 import com.singflow.android.core.model.VpnStatus
+import com.singflow.android.core.wifi.TrustedWifi
 
 /**
  * 下拉通知栏 VPN 快捷磁贴。
@@ -26,6 +28,11 @@ class QuickTileService : TileService() {
             else -> {
                 val session = VpnControl.lastConfig(this)
                 if (session != null) {
+                    if (TrustedWifi.isTrusted(this, session.settings)) {
+                        Toast.makeText(this, "当前为受信任 Wi-Fi，已跳过代理", Toast.LENGTH_SHORT).show()
+                        updateTile()
+                        return
+                    }
                     VpnControl.connect(
                         context = this,
                         configJson = session.configJson,
@@ -64,15 +71,24 @@ class QuickTileService : TileService() {
     private fun updateTile() {
         val tile = qsTile ?: return
         val state = VpnStateRepository.snapshot()
+        val session = VpnControl.lastConfig(this)
+        val trusted = state.status != VpnStatus.CONNECTED &&
+            session != null && TrustedWifi.isTrusted(this, session.settings)
         tile.state = when (state.status) {
             VpnStatus.CONNECTED -> Tile.STATE_ACTIVE
             VpnStatus.CONNECTING, VpnStatus.STOPPING -> Tile.STATE_UNAVAILABLE
             else -> Tile.STATE_INACTIVE
         }
-        tile.label = when (state.status) {
-            VpnStatus.CONNECTED -> "SingFlow · 已连接"
-            VpnStatus.CONNECTING -> "SingFlow · 连接中"
+        tile.label = when {
+            state.status == VpnStatus.CONNECTED -> "SingFlow · 已连接"
+            state.status == VpnStatus.CONNECTING -> "SingFlow · 连接中"
+            trusted -> "SingFlow · 受信任 Wi-Fi"
             else -> "SingFlow"
+        }
+        tile.subtitle = when {
+            state.status == VpnStatus.CONNECTED -> state.activeNodeName.ifBlank { "已连接" }
+            trusted -> "已跳过代理"
+            else -> "未连接"
         }
         tile.icon = Icon.createWithResource(this, R.drawable.ic_singflow_logo)
         runCatching { tile.updateTile() }
