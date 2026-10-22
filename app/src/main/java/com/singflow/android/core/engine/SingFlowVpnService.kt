@@ -29,6 +29,7 @@ import com.singflow.android.core.database.NodeRepository
 import com.singflow.android.core.database.PreferencesManager
 import com.singflow.android.core.failover.ClashApiOutboundSwitcher
 import com.singflow.android.core.failover.FailoverController
+import com.singflow.android.core.wifi.TrustedWifi
 import com.singflow.android.core.failover.FailoverOutcome
 import com.singflow.android.core.failover.LocalNetworkVerifier
 import com.singflow.android.core.failover.RepositoryNodeStore
@@ -159,6 +160,13 @@ class SingFlowVpnService : VpnService() {
         currentNodeId = intent?.getStringExtra(EXTRA_NODE_ID).orEmpty()
         currentNodeName = intent?.getStringExtra(EXTRA_NODE_NAME).orEmpty()
         currentSettings = parseSettings(intent?.getStringExtra(EXTRA_SETTINGS))
+
+        if (TrustedWifi.isTrusted(applicationContext, currentSettings)) {
+            Log.i(TAG, "当前 Wi-Fi 属于受信任网络，跳过代理启动")
+            VpnStateRepository.setError("当前 Wi-Fi 已标记为受信任，已跳过代理")
+            stopSelf()
+            return
+        }
 
         VpnStateRepository.setStatus(
             status = VpnStatus.CONNECTING,

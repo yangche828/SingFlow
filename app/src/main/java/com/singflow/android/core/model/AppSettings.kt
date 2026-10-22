@@ -69,7 +69,9 @@ data class AppSettings(
     val webdavUrl: String = "",
     val webdavUsername: String = "",
     val webdavPasswordCipher: String = "",
-    val countryGroupOrder: List<String> = emptyList()
+    val countryGroupOrder: List<String> = emptyList(),
+    val trustedWifiEnabled: Boolean = false,
+    val trustedWifiSsids: List<String> = emptyList()
 ) {
     companion object {
         val DEFAULT = AppSettings()

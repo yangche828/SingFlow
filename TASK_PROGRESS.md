@@ -1149,3 +1149,22 @@ restore=恢复完成：6 个节点、1 个订阅、1 条应用规则
 2. 订阅 Worker 全流程集成测试（Room + MockWebServer）。
 3. 受信任 Wi-Fi（SSID）自动化策略。
 4. 诊断报告中的 subscriptions 信息补全。
+
+### R38：受信任 Wi-Fi 跳过代理（已完成，基础版）
+
+| 模块 | 交付内容 | 验证 |
+| :--- | :--- | :--- |
+| 设置 | `trustedWifiEnabled` + `trustedWifiSsids` 持久化 | 编译 |
+| 识别 | `TrustedWifi` 读取 SSID（需定位权限），大小写不敏感匹配 | 2 个单测 |
+| 服务 | 启动隧道前若当前 Wi-Fi 受信任，记录错误并 `stopSelf()`，不建立 TUN | 代码 |
+| UI | 设置「网络」新增开关、受信任列表展示、添加当前 Wi-Fi、清空；首次添加请求定位权限 | 编译 |
+| 权限 | Manifest 增加 `ACCESS_WIFI_STATE`、`ACCESS_FINE_LOCATION` | 构建 |
+
+说明：受信任网络内自动跳过代理已实现；「离开受信任网络后自动重连」尚未接入（后台启动 FGS 受系统限制），留待后续评估。
+
+### 下一轮（R39）
+
+1. 连接详情按域名加入分流规则。
+2. 订阅 Worker 全流程集成测试（Room + MockWebServer）。
+3. 受信任 Wi-Fi 离开后自动恢复（前台/通知提示方案）。
+4. 诊断报告补全订阅数量与下次更新时间。

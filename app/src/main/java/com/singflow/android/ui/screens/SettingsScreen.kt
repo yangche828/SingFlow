@@ -1,6 +1,11 @@
 package com.singflow.android.ui.screens
 
+import android.Manifest
 import android.content.pm.PackageManager
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -63,6 +68,7 @@ import com.singflow.android.core.model.FailoverConfig
 import com.singflow.android.core.model.FailoverPreset
 import com.singflow.android.core.model.PerAppMode
 import com.singflow.android.core.model.ProxyNode
+import com.singflow.android.core.wifi.TrustedWifi
 import com.singflow.android.ui.theme.SignalAmber
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -102,6 +108,33 @@ fun SettingsScreen(
     var showAdvancedFailover by remember { mutableStateOf(false) }
     var showUtlsPicker by remember { mutableStateOf(false) }
     var savedHint by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    var pendingWifiAdd by remember { mutableStateOf(false) }
+
+    fun addCurrentWifi() {
+        val ssid = TrustedWifi.currentSsid(context)
+        if (ssid == null) {
+            Toast.makeText(context, "无法读取当前 Wi-Fi，请确认定位权限与定位开关", Toast.LENGTH_LONG).show()
+            return
+        }
+        onUpdate(
+            settings.copy(
+                trustedWifiSsids = (settings.trustedWifiSsids + ssid).distinct()
+            )
+        )
+        Toast.makeText(context, "已添加受信任 Wi-Fi：$ssid", Toast.LENGTH_SHORT).show()
+    }
+
+    val locationLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted && pendingWifiAdd) {
+            pendingWifiAdd = false
+            addCurrentWifi()
+        } else if (!granted) {
+            Toast.makeText(context, "需要定位权限才能读取 Wi-Fi 名称", Toast.LENGTH_LONG).show()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -183,6 +216,49 @@ fun SettingsScreen(
                 checked = settings.fakeIpEnabled,
                 onCheckedChange = { onUpdate(settings.copy(fakeIpEnabled = it)) }
             )
+            SwitchRow(
+                title = "受信任 Wi-Fi 跳过代理",
+                subtitle = "连上列表中的 Wi-Fi 时自动不启动 VPN（读取 SSID 需定位权限）",
+                checked = settings.trustedWifiEnabled,
+                onCheckedChange = { onUpdate(settings.copy(trustedWifiEnabled = it)) }
+            )
+            if (settings.trustedWifiEnabled) {
+                Text(
+                    text = if (settings.trustedWifiSsids.isEmpty()) {
+                        "尚未添加受信任 Wi-Fi"
+                    } else {
+                        "受信任：${settings.trustedWifiSsids.joinToString("、")}"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = {
+                            val granted = ContextCompat.checkSelfPermission(
+                                context,
+                                Manifest.permission.ACCESS_FINE_LOCATION
+                            ) == PackageManager.PERMISSION_GRANTED
+                            if (granted) {
+                                addCurrentWifi()
+                            } else {
+                                pendingWifiAdd = true
+                                locationLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                            }
+                        }
+                    ) {
+                        Text("添加当前 Wi-Fi")
+                    }
+                    if (settings.trustedWifiSsids.isNotEmpty()) {
+                        TextButton(
+                            onClick = { onUpdate(settings.copy(trustedWifiSsids = emptyList())) }
+                        ) {
+                            Text("清空列表")
+                        }
+                    }
+                }
+            }
             SwitchRow(
                 title = "开机自动连接",
                 subtitle = "开机或应用升级后恢复上次隧道",
