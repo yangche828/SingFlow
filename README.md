@@ -31,8 +31,22 @@ Android 13~17（API 33~37）上的 sing-box 客户端：Jetpack Compose UI + sin
 ```bash
 ./gradlew :app:kspDebugKotlin          # KSP
 ./gradlew :app:testDebugUnitTest       # 单元测试（含 sing-box 语法红线断言）
-./gradlew :app:assembleDebug           # 产物 app/build/outputs/apk/debug/app-debug.apk
+./gradlew :app:assembleDebug           # 调试包 app/build/outputs/apk/debug/app-debug.apk
+./gradlew :app:assembleRelease         # 发布包 app/build/outputs/apk/release/app-release.apk
 ```
+
+### 两个构建变体的差别
+
+| 项 | `debug` | `release` |
+| :--- | :--- | :--- |
+| 体积 | **219.7 MB** | **80.5 MB** |
+| R8 / 资源压缩 | 关闭 | 开启（`isMinifyEnabled` + `isShrinkResources`），dex 57 MB → 2.8 MB |
+| ABI | `arm64-v8a` + `x86_64` | **仅 `arm64-v8a`**（去掉单份约 81 MB 的 x86_64 内核） |
+| 签名 | debug keystore | 复用 debug keystore（个人自用，便于直接安装） |
+| 用途 | 模拟器 / 需要 `run-as` 的调试 | 真机日常使用、分发 |
+
+> release 仅含 arm64，**x86_64 模拟器无法运行**（缺内核会在连接瞬间 SIGILL，属 ARM 翻译层限制）；模拟器验收请用 `debug`。
+> 对外发布前请替换 `app/build.gradle.kts` 中 `release.signingConfig` 为正式 keystore。
 
 ## 验收
 
@@ -50,6 +64,14 @@ pwsh -File scripts\e2e_adb_verify.ps1 -ProxyLog acceptance\vless-loopback.log
 
 脚本会完成：安装 → 导入节点 → 建立 VPN → 断言 `tun0` / MTU / 前台服务类型 / 无崩溃 / 节点入库 / **TUN 已下发 DNS**
 → 在 VPN 内用浏览器真实出网（随机 URL 排除缓存）。PC 侧还可先用 `scripts/dev/probe-vless-ws.js` 独立核对节点的 TLS/WS 层。
+
+真机 release 包实测（HONOR BKQ-AN10，Android 17 / API 37，arm64-v8a）：
+
+```powershell
+pwsh -File scripts\e2e_adb_verify.ps1 -ApkPath .\app-release.apk `
+  -ProxyLog <回环服务端日志> -RemoteDns https://doh.pub/dns-query -TestUrl "https://www.example.com/"
+# → 18/18 PASS（acceptance/e2e_realdevice_release_arm64.log）
+```
 
 验收记录见 `TASK_PROGRESS.md`，交接与踩坑见 `HANDOFF.md`，原始证据在 `acceptance/`。
 
@@ -69,6 +91,8 @@ app/src/main/java/com/singflow/android/
 
 ## 已知限制
 
+- **16 KB 页大小**：`libbox.so` 已按 `-Wl,-z,max-page-size=16384` 构建，`zipalign -c -P 16` 校验通过；
+  但运行时仅在 4 KB 页设备（HONOR BKQ-AN10，Android 17）与 x86_64 模拟器上验证，**尚无真 16 KB 页设备的运行时证据**。
 - 默认远程 DoH 为 `https://1.1.1.1/dns-query`；在部分网络/节点上该地址不可达（实测被 TLS alert 拒绝），可改 `https://doh.pub/dns-query`。
 - 节点 URI 中的 `ech=` 参数暂未参与解析（需 `tls.ech.config`）；不影响连通性，但缺少 ECH 抗封锁性。
 - 内置 `geosite-cn` 含 `gstatic.com` 等 Google CDN 域名，会被判定为大陆域名走直连。

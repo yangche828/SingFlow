@@ -1,7 +1,7 @@
 # HANDOFF — SingFlow 原生内核联调收尾
 
 > 生成时间：2026-10-21
-> 更新时间：2026-10-22（追加：用用户提供的真实公网 VLESS-WS 节点完成验收，17/17 全绿，并修复「客户端 DNS 逃出隧道」缺陷）
+> 更新时间：2026-10-22（追加：release 精简包 80.5 MB，真机 Android 17 / arm64 验收 18/18 全绿）
 > 来源：OpenCode 会话「SingFlow开发」（`ses_eab443d30ffdXWf6WBPExEkRPl`，累计 2.5M input tokens，经历 7 次上下文压缩）
 > 用途：跨工具/跨模型交接。接手者**先读完本文件 + `AGENTS.md` + `TASK_PROGRESS.md`**，再动代码。
 
@@ -19,12 +19,15 @@
 - [x] 全程遵守 `AGENTS.md` 的 sing-box 1.14+ 六大语法红线与 Android 13~17 兼容红线（APK 通过 `zipalign -c -P 16` 16KB 对齐校验）
 - [x] **用户提供的真实公网节点（VLESS + TLS + WS + Cloudflare）连通并可访问谷歌**：`tun0` 在线、`TUN DNS` 已下发、
   Chrome 渲染 `google.com`、Clash API 显示 `www.google.com → 142.251.x.x:443 chains=proxy`（单次页面下行 794,699 B）
+- [x] **release 精简包在真机（HONOR BKQ-AN10 / Android 17 / arm64-v8a）18/18 PASS**：
+  80.5 MB（R8 + 资源压缩 + 仅 arm64），`tun0`/MTU 9000/前台服务 `systemExempted`/TUN DNS/UI「已保护」/浏览器真实出网全部通过，零崩溃
 
 证据：`acceptance/e2e_api33.log`（`.ps1` 18/18）、`acceptance/e2e_api36.log`（`.ps1` 19/19）、
 `acceptance/e2e_api36_sh.log`（`.sh` 19/19）、`acceptance/e2e_api33_sh.log`（`.sh` 17/17）、
 `acceptance/vless-loopback.log`（代理侧原始日志）、`acceptance/e2e_api36_attempt1_egress_timeout.log`（沙箱出口抖动留档）、
 `acceptance/e2e_api36_realnode.log`（真实节点 `.ps1` 17/17）、`acceptance/e2e_api36_realnode_sh.log`（真实节点 `.sh` 17/17）、
-`acceptance/google_api36_realnode.png`（Chrome 中的 google.com）、`acceptance/realnode_connections.json`（Clash API 快照）。
+`acceptance/google_api36_realnode.png`（Chrome 中的 google.com）、`acceptance/realnode_connections.json`（Clash API 快照）、
+`acceptance/e2e_realdevice_release_arm64.log`（真机 release 18/18）、`acceptance/realdevice_release_home.png`（真机首页）。
 
 ## 3. 现在到哪一步了
 
@@ -51,6 +54,8 @@
 - 唯一遗留的非阻塞改进：`AppSettings.remoteDns` 的代码默认值仍是 `https://1.1.1.1/dns-query`，**已实测该地址在真实节点上被 TLS alert 拒绝**
   （sing-box 报 `remote error: tls: handshake failure`，`https://doh.pub/dns-query` 与 `https://dns.google/resolve` 均正常），建议改为 `https://doh.pub/dns-query`；
   验收脚本已能自动改这个设置（`-RemoteDns` / `REMOTE_DNS`），但产品默认值未动（需用户确认）。
+- release 构建策略已定（`app/build.gradle.kts`）：R8 + `shrinkResources` + `abiFilters arm64-v8a` + 复用 debug 签名，
+  APK 219.7 MB → **80.5 MB**；真机 Android 17 / arm64 验收 **18/18 PASS**。
 
 ## 4. 已经踩过的坑（**不要重走**）
 
@@ -86,7 +91,9 @@
 | `app/src/test/java/com/singflow/android/core/config/SingBoxConfigPipelineTest.kt` | 31 个单测（含 `gvisor` / `direct` 断言） | 改拦截器后同步断言 |
 | `app/src/main/java/com/singflow/android/ui/screens/SettingsScreen.kt` | DNS/MTU/Mixed 端口编辑 | 模拟器改 remoteDns 走这里 |
 | `app/libs/libbox.aar` | 原生库（7 entries，56 MB） | 已入库；仓库公开时须履行 GPLv3 源码义务 |
-| `app/build/outputs/apk/debug/app-debug.apk` | 最新 APK（约 219.7 MB） | 含双 ABI `.so` |
+| `app/build/outputs/apk/debug/app-debug.apk` | 最新调试 APK（约 219.7 MB） | 含双 ABI `.so`；模拟器验收用这个 |
+| `app/build/outputs/apk/release/app-release.apk` | 发布包（**80.5 MB**） | R8 + 资源压缩 + 仅 `arm64-v8a` + debug 签名；x86_64 模拟器跑不了 |
+| `acceptance/e2e_realdevice_release_arm64.log` / `realdevice_release_home.png` | 真机 release 验收 18/18 + 首页截图（Android 17 / arm64） | 仅 arm64，需 `-RemoteDns https://doh.pub/dns-query` |
 | `scripts/dev/vless-loopback-server.js` | 本地 VLESS 回环测试服务端（TCP + UDP/XUDP，默认 8443） | 可复现验收的必备件；`node scripts/dev/vless-loopback-server.js --port 8443` |
 | `scripts/e2e_adb_verify.ps1` | 主验收脚本（Windows/pwsh） | 设备自启、UI 自动化、真实转发断言；运行中可安全编辑 |
 | `scripts/e2e_adb_verify.sh` | 验收脚本（Linux/macOS/Git Bash） | **运行期间禁止编辑该文件**（bash 边读边执行） |
@@ -103,6 +110,7 @@
 ### 交付物
 
 1. `app/build/outputs/apk/debug/app-debug.apk`（219.7 MB，arm64-v8a + x86_64，含 `libbox.aar`）。
+   真机自用请用 `app/build/outputs/apk/release/app-release.apk`（**80.5 MB**，R8 + 资源压缩 + 仅 arm64-v8a，复用 debug 签名）。
 2. 源码：`app/src/main/...`（core: model/database/parser/config/engine，ui: theme/components/screens）。
 3. 验收工具链：`scripts/dev/vless-loopback-server.js`、`scripts/e2e_adb_verify.ps1`、`scripts/e2e_adb_verify.sh`。
 4. 验收证据：`acceptance/e2e_api33.log`（18/18）、`acceptance/e2e_api36.log`（19/19）、`acceptance/e2e_api36_sh.log`（19/19）、`acceptance/e2e_api33_sh.log`（17/17）、`acceptance/vless-loopback.log`、
@@ -112,7 +120,8 @@
 ### 后续建议（按优先级）
 
 1. 把 `AppSettings.remoteDns` 默认值改成 `https://doh.pub/dns-query`（当前 `1.1.1.1` 在国内不可达）。
-2. 发布前补 release 签名与 `isMinifyEnabled`/R8 策略；当前 `release` 未开启混淆。
+2. 对外发布前替换 release 签名为正式 keystore（当前复用 debug keystore，仅为个人自用方便安装）；
+   R8 与 `shrinkResources` 已开启（APK 219.7 MB → 80.5 MB），如需恢复 x86_64 模拟器支持，删掉 `ndk { abiFilters }` 即可。
 3. 若要对外分发 APK，注意 GPLv3 义务（`libbox.aar` 源自 sing-box）。
 4. 若接入真实机场节点，用 `-NodeUri` 参数跑一遍验收脚本即可复用全部断言：
 
@@ -127,7 +136,12 @@
 
 ## 7. 环境与命令
 
-- 本机：JDK 21 `D:\Apps\JDK\jdk-21`；Android SDK `D:\Apps\Android\Sdk`；Node `D:\Apps\nodejs\node.exe`；**无 `gh` CLI**；**项目目录不是 git 仓库**。
+- 本机：JDK 21 `D:\Apps\JDK\jdk-21`；Android SDK `D:\Apps\Android\Sdk`；Node `D:\Apps\nodejs\node.exe`；**无 `gh` CLI**；
+  仓库 `https://github.com/yangche828/SingFlow`（私有，默认 `main`；`libbox.aar` 已入库，56 MB）。
+- 推送必须带代理参数（Schannel 在该代理下握手失败）：`git -c http.sslBackend=openssl -c http.version=HTTP/1.1 -c http.proxy=http://127.0.0.1:10808 -c https.proxy=http://127.0.0.1:10808 push origin main`。
+- 真机 adb 识别不到（`adb devices` 为空但设备管理器里有 `ADB Interface`）：Windows 把该接口的
+  `DeviceInterfaceGUID` 绑成了厂商值，改回 adb 的 `{F72FE0D4-CBCB-407D-8814-9ED673D0DD6B}`（`HKLM\SYSTEM\CurrentControlSet\Enum\USB\VID_xxxx&PID_xxxx&MI_02\...\Device Parameters`）
+  再 `pnputil /restart-device <InstanceId>` 即可；HONOR/HUAWEI 常见。
 - 代理：`127.0.0.1:10808` 已写入 `C:\Users\yangche\.gradle\gradle.properties`，Gradle 下载依赖依赖它。
 - Shell：**必须用 `pwsh`**，PowerShell 5.1 解析 E2E 脚本会报 `MissingEndCurlyBrace`。
 - 模拟器启动：`-memory 4096 -no-window -no-audio -gpu swiftshader_indirect -no-snapshot-load -no-boot-anim`；AVD `SingFlow_Test_AVD`(API33) / `SingFlow_Test_AVD_36`(API36)。
@@ -171,7 +185,10 @@
 - 内置 `geosite-cn` 含 `gstatic.com`：命中大陆分流 → `dns-direct` 拿到 CN 劫持 IP（`120.253.253.162`）→ `chains=direct`；主域 `www.google.com` 不在表内，走 `proxy`，页面可正常渲染。
 - 节点 URI 的 `ech=` 参数未参与解析（见第 6 节建议 5）；实测不影响连通性（Cloudflare 对 `sni=node.example.com` 返回合法证书）。
 - host 内存约 15.8 GB，同时只起一个 AVD（4 GB）；起模拟器前先 `./gradlew --stop`，否则 guest 易被 LMK 杀。低配 + 软件 GPU 下 SystemUI 偶发 ANR（脚本已自动点掉）。
-- 含 `libbox.aar` 的 APK 分发受 GPLv3 约束（自用不受限）。
+- **带 `libbox.aar` 的 APK 分发受 GPLv3 约束**（自用不受限）。
+- **16 KB 页大小只做了静态校验**：`zipalign -c -P 16` 通过、`.so` 以 `-Wl,-z,max-page-size=16384` 构建，
+  但真机（HONOR BKQ-AN10）页大小是 4096，**尚无真 16 KB 页设备的运行时证据**。
+- **release 包仅含 arm64**：x86_64 模拟器加载会 SIGILL（ARM 翻译层限制），模拟器验收必须用 `debug` 包。
 - 代理服务端日志只记录解析后的 `IP:port`（细分域名需看客户端解析），因此回环验收的流量断言按「新增行数 + 协议类型（TCP / UDP-xudp）」判定；
   真实节点没有服务端日志，改用 Clash API `/connections` + 浏览器渲染作为转发证据。
 
@@ -185,5 +202,6 @@
 
 ## 10. 接手后的第一句话建议
 
-> 项目已交付：Phase 0~6 全绿，API 33 / API 36 双版本真实转发验收通过，并已用真实公网节点（VLESS+TLS+WS）验证可访问谷歌。先读 `AGENTS.md`、`TASK_PROGRESS.md` 与
+> 项目已交付：Phase 0~6 全绿，API 33 / API 36 双版本真实转发验收通过，真实公网节点（VLESS+TLS+WS）验证可访问谷歌，
+> 且 release 精简包（80.5 MB / arm64）已在 Android 17 真机跑出 18/18。先读 `AGENTS.md`、`TASK_PROGRESS.md` 与
 > 本文件第 4/5 节，再跑 `./gradlew :app:testDebugUnitTest`、`scripts/e2e_adb_verify.ps1` 复现现状；**先不要改代码**（尤其别删 `fallbackTunDnsServers()`，否则客户端 DNS 会再次绕过隧道）。

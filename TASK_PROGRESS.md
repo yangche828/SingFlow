@@ -9,7 +9,7 @@
 | 2 | 全协议解析引擎 + JUnit | [x] | `./gradlew :app:testDebugUnitTest --tests "*UniversalParserTest"` | 17 tests / 0 failures |
 | 3 | sing-box 1.14+ 配置编译流水线 + 红线断言 | [x] | `./gradlew :app:testDebugUnitTest` | 31 tests / 0 failures（含六大语法红线断言） |
 | 4 | libbox 双模引擎、VpnService、测速与流量监控 | [x] | `./gradlew :app:compileDebugKotlin :app:testDebugUnitTest` | BUILD SUCCESSFUL（`build_compile.log`） |
-| 5 | Compose UI 与 APK 打包 | [x] | `./gradlew :app:assembleDebug` | `app-debug.apk` 219.7 MB（230,368,055 B > 5 MB），16 KB 页对齐校验通过 |
+| 5 | Compose UI 与 APK 打包 | [x] | `./gradlew :app:assembleDebug` / `:app:assembleRelease` | `app-debug.apk` 219.7 MB（230,368,055 B > 5 MB），16 KB 页对齐校验通过；`app-release.apk` **80.5 MB**（R8 + 资源压缩 + 仅 arm64-v8a） |
 | 6 | 真机/模拟器端到端联调（真实转发） | [x] | `scripts/e2e_adb_verify.ps1` / `scripts/e2e_adb_verify.sh` | 回环节点：API 33 **18/18 PASS**、API 36 **19/19 PASS**；用户真实节点（VLESS+TLS+WS）：API 36 **17/17 PASS**（浏览器渲染 `google.com`，`acceptance/e2e_api36_realnode.log`） |
 
 ## 环境快照
@@ -123,6 +123,30 @@ TLS/WS/VLESS 全部端到端（证书校验仍是 `node.example.com`），因此
 - **内置 `geosite-cn` 含 `gstatic.com` 等 Google CDN 域名**：这些域名按大陆分流走 `dns-direct`（223.5.5.5）→ 被污染的 CN IP → `chains=direct`；
   主域 `www.google.com` 不在该表内，走 `proxy`，页面可正常渲染。属规则集内容问题，不影响本次结论。
 
+## 真机 release 包验收（Android 17 / arm64-v8a）
+
+被测包：`app-release.apk`（80.5 MB，R8 + `shrinkResources` + `abiFilters arm64-v8a` + 复用 debug 签名），
+设备：HONOR BKQ-AN10，Android 17（API 37），`arm64-v8a`，页大小 4096，无 root。
+运行命令：`pwsh -File scripts\e2e_adb_verify.ps1 -ApkPath <apk> -ProxyLog <回环日志> -RemoteDns https://doh.pub/dns-query -TestUrl https://www.example.com/`。
+
+| 检查项 | 结果 |
+| :--- | :--- |
+| `adb install -r` | ✅ Success（2.8 s） |
+| `tun0` / MTU | ✅ `172.19.0.1/30`、`mtu=9000` |
+| 应用进程 / 崩溃 | ✅ 存活；无 `FATAL EXCEPTION`、无 tombstone |
+| 前台服务 | ✅ `isForeground=true`；清单 `0x40000400`；运行时 `types=0x00000400` |
+| **TUN DNS 下发** | ✅ `DnsAddresses=[1.1.1.1]` |
+| UI | ✅ 「已保护」（非诊断模式）+ SingFlow 要素 |
+| **真实转发（浏览器）** | ✅ 期望文本命中（`documentation examples`） |
+| **真实转发（代理侧）** | ✅ VLESS 服务端新增 39 行（含 TCP / DoH / DoT / UDP-xudp） |
+| 节点入库 | ⚠️ WARN —— release `debuggable=false`，`run-as` 不可用读不到 Room 数据库（非缺陷） |
+| **汇总** | **18/18 PASS，0 FAIL** |
+
+> 第一轮（未指定 `-RemoteDns`）曾 15/18：屏幕熄灭导致两条 UI 断言读到空快照；隧道内 DNS 走 `1.1.1.1:853`（DoT）
+> 而本机出口不可达 → 页面空白。开启屏幕常亮并改用 `https://doh.pub/dns-query` 后 18/18 全绿 —— 均为环境问题，非 App 缺陷。
+
+证据：`acceptance/e2e_realdevice_release_arm64.log`、`acceptance/realdevice_release_home.png`。
+
 ## 补充验证
 
 - **16 KB 页对齐**：`zipalign -c -P 16 -v 4 app-debug.apk` → `Verification successful`（`lib/arm64-v8a/libbox.so`、`lib/x86_64/libbox.so` 均 OK）。
@@ -186,3 +210,7 @@ TLS/WS/VLESS 全部端到端（证书校验仍是 `node.example.com`），因此
 - 验收脚本健壮性：节点名 percent-decode（`:ps1` + `.sh`）、`.ps1` `[Console]::OutputEncoding=UTF8` + `select hex(name)` 编码无关比较、
   `Clear-AnrDialog` / `ui_clear_anr` 自动处理模拟器 SystemUI ANR 弹窗。
 - 回归门禁复跑：`:app:assembleDebug`（BUILD SUCCESSFUL 52s）、`:app:testDebugUnitTest :app:lintDebug`（BUILD SUCCESSFUL 1m17s，`build_test.log`）。
+- **发布体积优化**：release 开启 R8 + `isShrinkResources`，`abiFilters` 限定 `arm64-v8a`，复用 debug 签名（个人自用）；
+  APK 从 219.7 MB 压到 **80.5 MB**（dex 57 MB → 2.8 MB，去掉 x86_64 内核 −81.5 MB）。
+- **真机 release 验收 18/18 PASS**（HONOR BKQ-AN10 / Android 17 / arm64，`acceptance/e2e_realdevice_release_arm64.log`），
+  同时确认模拟器此前连接瞬间 SIGILL 是 x86_64 ARM 翻译层限制，与 App 无关。
