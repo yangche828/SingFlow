@@ -3,7 +3,9 @@ package com.singflow.android.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.singflow.android.core.probe.ClashApiClient
+import com.singflow.android.core.probe.ClashCountedLabel
 import com.singflow.android.core.probe.ClashProxyGroup
+import com.singflow.android.core.probe.ClashStats
 import com.singflow.android.core.probe.ClashTraffic
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -38,6 +40,8 @@ class DiagnosticsViewModel @Inject constructor(
         val loading: Boolean = false,
         val groups: List<ClashProxyGroup> = emptyList(),
         val traffic: ClashTraffic? = null,
+        val ruleHits: List<ClashCountedLabel> = emptyList(),
+        val chainHits: List<ClashCountedLabel> = emptyList(),
         val lastUpdated: Long = 0L
     )
 
@@ -75,18 +79,28 @@ class DiagnosticsViewModel @Inject constructor(
         val available = clashApiClient.isAvailable()
         if (!available) {
             _state.update {
-                it.copy(available = false, loading = false, groups = emptyList(), traffic = null)
+                it.copy(
+                    available = false,
+                    loading = false,
+                    groups = emptyList(),
+                    traffic = null,
+                    ruleHits = emptyList(),
+                    chainHits = emptyList()
+                )
             }
             return
         }
         val groups = clashApiClient.proxyGroups()
         val traffic = clashApiClient.traffic()
+        val connections = traffic?.connections.orEmpty()
         _state.update {
             it.copy(
                 available = true,
                 loading = false,
                 groups = groups,
                 traffic = traffic,
+                ruleHits = ClashStats.ruleHits(connections),
+                chainHits = ClashStats.chainHits(connections),
                 lastUpdated = System.currentTimeMillis()
             )
         }

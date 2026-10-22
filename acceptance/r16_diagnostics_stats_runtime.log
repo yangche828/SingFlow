@@ -1,0 +1,5 @@
+== R16 诊断规则/出站链统计验收 ==
+rule_hits=final 24, rule_set=[geosite-cn geoip-cn]=>route(direct) 1
+chain_hits=node-b09051a0... 24, direct 1
+active_connections=25
+screenshot=acceptance/r16_diagnostics_rule_stats.png

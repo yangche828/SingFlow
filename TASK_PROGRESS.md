@@ -650,3 +650,29 @@ selector_restored=node-b09051a0-6f46-4888-ada9-5aff297de26b
 2. 连接诊断增加规则命中统计与节点延迟历史曲线。
 3. 订阅更新保留收藏/健康统计的端到端测试。
 4. 节点详情页（单节点配置、分享、延迟趋势）。
+
+### R16：诊断规则命中与出站链统计（已完成）
+
+| 模块 | 交付内容 | 验证 |
+| :--- | :--- | :--- |
+| 聚合逻辑 | 新增 `ClashStats`：按规则、出站链首节点聚合活跃连接，空规则归为「未命中规则」 | 3 个单测 |
+| ViewModel | `DiagnosticsViewModel` 增加 `ruleHits` / `chainHits`，每 2 秒随连接刷新 | 运行 |
+| UI | 诊断页新增「规则命中（活跃连接）」与「出站链分布」两段，各展示前 10 项 | 截图 |
+| 展示 | 规则形如 `rule_set=[geosite-cn geoip-cn] => route(direct)`，链形如节点 tag / direct | 截图 |
+
+**运行时验收**：
+
+```text
+rule_hits=final 24, rule_set=[geosite-cn geoip-cn]=>route(direct) 1
+chain_hits=node-b09051a0... 24, direct 1
+active_connections=25
+```
+
+证据：`acceptance/r16_diagnostics_rule_stats.png`、`acceptance/r16_diagnostics_stats_runtime.log`。
+
+### 下一轮（R17）
+
+1. 节点分组拖拽排序（收藏组/国家组）。
+2. 节点详情页（配置预览、分享、延迟趋势）。
+3. 订阅更新保留收藏/健康统计的端到端测试。
+4. 节点延迟历史环形缓冲与诊断曲线。

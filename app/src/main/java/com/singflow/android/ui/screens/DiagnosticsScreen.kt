@@ -118,6 +118,44 @@ fun DiagnosticsScreen(
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
                 }
 
+                item(key = "rules-header") {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    SectionTitle("规则命中（活跃连接）")
+                }
+                if (state.ruleHits.isEmpty()) {
+                    item(key = "rules-empty") {
+                        Text(
+                            text = "暂无连接",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(vertical = 6.dp)
+                        )
+                    }
+                } else {
+                    items(state.ruleHits.take(10), key = { "rule-${it.label}" }) { hit ->
+                        CountRow(label = hit.label, count = hit.count)
+                    }
+                }
+
+                item(key = "chains-header") {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    SectionTitle("出站链分布")
+                }
+                if (state.chainHits.isEmpty()) {
+                    item(key = "chains-empty") {
+                        Text(
+                            text = "暂无连接",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(vertical = 6.dp)
+                        )
+                    }
+                } else {
+                    items(state.chainHits.take(10), key = { "chain-${it.label}" }) { hit ->
+                        CountRow(label = hit.label, count = hit.count)
+                    }
+                }
+
                 item(key = "traffic-header") {
                     Spacer(modifier = Modifier.height(14.dp))
                     SectionTitle("累计流量")
@@ -197,8 +235,30 @@ private fun StatusCard(vpnState: VpnState, selectedNode: ProxyNode?) {
 }
 
 @Composable
-private fun GroupRow(group: ClashProxyGroup) {
+private fun CountRow(label: String, count: Int) {
     Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = "$count",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
+    }
+}
+
+@Composable
+private fun GroupRow(group: ClashProxyGroup) {    Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 7.dp),
