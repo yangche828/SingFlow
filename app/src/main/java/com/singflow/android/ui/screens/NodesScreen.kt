@@ -1,5 +1,6 @@
 package com.singflow.android.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,6 +27,8 @@ import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.Done
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Inbox
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Public
@@ -92,6 +95,7 @@ fun NodesScreen(
     var showGroupOrder by remember { mutableStateOf(false) }
     var showNodeMenu by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
+    var collapsedGroups by remember { mutableStateOf<Set<String>>(emptySet()) }
     var batchHint by remember { mutableStateOf<String?>(null) }
     val clipboard = LocalClipboardManager.current
     val filteredNodes = remember(nodes, searchQuery) {
@@ -381,10 +385,24 @@ fun NodesScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 groups.forEach { group ->
+                    val groupKey = group.countryCode.ifBlank { group.title }
+                    val expanded = searchQuery.isNotBlank() || groupKey !in collapsedGroups
                     item(key = "header-${group.title}") {
-                        NodeGroupHeader(title = group.title, count = group.nodes.size)
+                        NodeGroupHeader(
+                            title = group.title,
+                            count = group.nodes.size,
+                            expanded = expanded,
+                            onToggle = {
+                                collapsedGroups = if (groupKey in collapsedGroups) {
+                                    collapsedGroups - groupKey
+                                } else {
+                                    collapsedGroups + groupKey
+                                }
+                            }
+                        )
                     }
-                    items(group.nodes, key = { it.id }) { node ->
+                    if (expanded) {
+                        items(group.nodes, key = { it.id }) { node ->
                         NodeItemCard(
                             node = node,
                             selected = node.id == selectedId,
@@ -401,6 +419,7 @@ fun NodesScreen(
                                 }
                             }
                         )
+                        }
                     }
                 }
                 item {
@@ -637,10 +656,16 @@ private fun GroupOrderDialog(
  * 分组标题。
  */
 @Composable
-private fun NodeGroupHeader(title: String, count: Int) {
+private fun NodeGroupHeader(
+    title: String,
+    count: Int,
+    expanded: Boolean,
+    onToggle: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(onClick = onToggle)
             .padding(top = 6.dp, bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -655,6 +680,13 @@ private fun NodeGroupHeader(title: String, count: Int) {
             text = "($count)",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.weight(1f))
+        Icon(
+            imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+            contentDescription = if (expanded) "折叠分组" else "展开分组",
+            modifier = Modifier.size(20.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
