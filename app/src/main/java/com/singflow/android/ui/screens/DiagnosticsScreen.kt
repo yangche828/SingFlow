@@ -25,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -38,6 +39,7 @@ import com.singflow.android.core.probe.ClashConnection
 import com.singflow.android.core.probe.ClashProxyGroup
 import com.singflow.android.core.probe.LatencySample
 import com.singflow.android.ui.components.LatencySparkline
+import com.singflow.android.ui.theme.healthColor
 import com.singflow.android.ui.DiagnosticsViewModel
 import com.singflow.android.ui.components.formatBytes
 
@@ -46,6 +48,7 @@ import com.singflow.android.ui.components.formatBytes
  *
  * @param vpnState VPN 运行态
  * @param selectedNode 当前节点
+ * @param allNodes 全部节点（用于异常/熔断列表）
  * @param onBack 返回
  */
 @Composable
@@ -53,9 +56,19 @@ fun DiagnosticsScreen(
     vpnState: VpnState,
     selectedNode: ProxyNode?,
     onBack: () -> Unit,
+    allNodes: List<ProxyNode> = emptyList(),
     diagnosticsViewModel: DiagnosticsViewModel = hiltViewModel()
 ) {
     val state by diagnosticsViewModel.state.collectAsStateWithLifecycle()
+    val problemNodes = remember(allNodes) {
+        allNodes.filter { it.consecutiveFailures > 0 || it.isCoolingDown() }
+            .sortedWith(
+                compareByDescending<ProxyNode> { it.isCoolingDown() }
+                    .thenByDescending { it.consecutiveFailures }
+                    .thenBy { it.healthScore }
+            )
+            .take(8)
+    }
 
     DisposableEffect(selectedNode?.id) {
         diagnosticsViewModel.bindNode(selectedNode?.id)
@@ -106,6 +119,23 @@ fun DiagnosticsScreen(
             if (state.latencyHistory.size >= 2) {
                 item(key = "latency-history") {
                     LatencyTrendCard(state.latencyHistory)
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+            }
+
+            if (problemNodes.isNotEmpty()) {
+                item(key = "problem-nodes-header") {
+                    Text(
+                        text = "异常 / 熔断节点（${problemNodes.size}）",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+                items(problemNodes, key = { "problem-${it.id}" }) { node ->
+                    ProblemNodeRow(node)
+                }
+                item(key = "problem-nodes-spacer") {
                     Spacer(modifier = Modifier.height(12.dp))
                 }
             }
@@ -205,6 +235,42 @@ fun DiagnosticsScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ProblemNodeRow(node: ProxyNode) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = node.displayName,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = buildString {
+                    append("连续失败 ${node.consecutiveFailures} 次")
+                    if (node.isCoolingDown()) {
+                        val minutes = ((node.cooldownUntilMs - System.currentTimeMillis()) / 60_000)
+                            .coerceAtLeast(1)
+                        append(" · 冷却剩余约 $minutes 分")
+                    }
+                },
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Text(
+            text = "${node.healthScore} 分",
+            style = MaterialTheme.typography.labelMedium,
+            color = healthColor(node.healthScore)
+        )
     }
 }
 

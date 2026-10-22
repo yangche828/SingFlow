@@ -1,0 +1,5 @@
+== R25 诊断异常节点列表验收 ==
+problem_nodes=异常 / 熔断节点（5）
+rows=日本东京/新加坡/美国/回环 连续失败 6 次，健康 0 分
+cooldown=冷却中会显示剩余分钟；列表中当前均已过冷却
+screenshot=acceptance/r25_problem_nodes.png

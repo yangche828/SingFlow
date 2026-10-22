@@ -273,7 +273,8 @@ fun SingFlowRoot(viewModel: MainViewModel) {
                 DiagnosticsScreen(
                     vpnState = vpnState,
                     selectedNode = selectedNode,
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
+                    allNodes = nodes
                 )
             }
             composable("export-backup") {
