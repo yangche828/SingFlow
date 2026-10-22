@@ -2,7 +2,6 @@ package com.singflow.android.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,7 +14,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.DeleteOutline
-import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material3.Card
@@ -39,7 +37,7 @@ import com.singflow.android.ui.theme.latencyColor
 /**
  * 节点卡片。
  *
- * 展示协议角标、名称、国家/地区、健康度标签、实测延迟与收藏状态。
+ * 采用「名称 / 国家+健康度 / 地址+延迟」三行布局，在 320dp 窄屏上也不会挤压换行。
  *
  * @param node 节点
  * @param selected 是否当前选中
@@ -73,14 +71,14 @@ fun NodeItemCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
+                .padding(start = 12.dp, end = 4.dp, top = 10.dp, bottom = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(10.dp))
                     .background(badge.copy(alpha = 0.16f))
-                    .padding(horizontal = 9.dp, vertical = 6.dp)
+                    .padding(horizontal = 8.dp, vertical = 5.dp)
             ) {
                 Text(
                     text = node.protocol.displayName,
@@ -90,7 +88,7 @@ fun NodeItemCard(
                 )
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(10.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -99,53 +97,50 @@ fun NodeItemCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.height(3.dp))
+                Spacer(modifier = Modifier.height(2.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = node.countryLabel,
+                        text = node.countryNameCn,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = "${node.healthTag} ${node.healthScore}",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
-                        color = healthTint
+                        color = healthTint,
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
                 Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = "${node.server}:${node.port}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "${node.server}:${node.port}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = formatLatency(node.latencyMs),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = latencyColor(node.latencyMs),
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                }
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Rounded.Speed,
-                    contentDescription = null,
-                    tint = latencyColor(node.latencyMs),
-                    modifier = Modifier.size(15.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = formatLatency(node.latencyMs),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = latencyColor(node.latencyMs)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(2.dp))
-
-            IconButton(onClick = onToggleFavorite, modifier = Modifier.size(36.dp)) {
+            IconButton(onClick = onToggleFavorite, modifier = Modifier.size(32.dp)) {
                 Icon(
                     imageVector = if (node.isFavorite) Icons.Rounded.Star else Icons.Rounded.StarBorder,
                     contentDescription = if (node.isFavorite) "取消收藏" else "收藏节点",
+                    modifier = Modifier.size(18.dp),
                     tint = if (node.isFavorite) {
                         MaterialTheme.colorScheme.tertiary
                     } else {
@@ -154,10 +149,11 @@ fun NodeItemCard(
                 )
             }
 
-            IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
+            IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
                 Icon(
                     imageVector = Icons.Rounded.DeleteOutline,
                     contentDescription = "删除节点",
+                    modifier = Modifier.size(18.dp),
                     tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
                 )
             }

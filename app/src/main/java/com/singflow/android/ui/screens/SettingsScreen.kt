@@ -252,7 +252,7 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(8.dp))
                 val countryCode = settings.failover.defaultCountryCode
                 val countryLabel = if (countryCode.isBlank()) {
-                    "智能选择（全局高分）"
+                    "智能（全局高分）"
                 } else {
                     val name = countries.firstOrNull { it.first.equals(countryCode, ignoreCase = true) }?.second
                         ?: countryCode

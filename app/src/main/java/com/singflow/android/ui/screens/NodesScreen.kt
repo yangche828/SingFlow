@@ -126,7 +126,7 @@ fun NodesScreen(
             ) {
                 Icon(Icons.Rounded.Sort, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(6.dp))
-                Text(if (sortByLatency) "按延迟排序中" else "按延迟排序")
+                Text(if (sortByLatency) "延迟排序中" else "延迟排序")
             }
         }
 
