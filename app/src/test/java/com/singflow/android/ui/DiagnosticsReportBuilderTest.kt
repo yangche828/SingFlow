@@ -36,13 +36,23 @@ class DiagnosticsReportBuilderTest {
             ruleHits = listOf(ClashCountedLabel("final", 3)),
             chainHits = listOf(ClashCountedLabel("node-1", 3)),
             latencyHistory = listOf(LatencySample(1000L, 20), LatencySample(2000L, 0)),
-            subscriptionCount = 2,
+            subscriptions = listOf(
+                SubscriptionReport(
+                    name = "测试订阅",
+                    upload = 1024L * 1024 * 1024,
+                    download = 2L * 1024 * 1024 * 1024,
+                    total = 10L * 1024 * 1024 * 1024,
+                    expireAt = 1_893_456_000_000L
+                )
+            ),
             timestampMs = 1_700_000_000_000L
         )
 
         assertTrue(report.contains("SingFlow 诊断报告"))
         assertTrue(report.contains("节点：2 个（异常 1 个）"))
-        assertTrue(report.contains("订阅：2 个"))
+        assertTrue(report.contains("订阅：1 个"))
+        assertTrue(report.contains("测试订阅"))
+        assertTrue(report.contains("剩余 7.0 GB"))
         assertTrue(report.contains("final: 3"))
         assertTrue(report.contains("失败 1 次"))
         assertTrue(report.contains("坏节点：连续失败 6 次"))

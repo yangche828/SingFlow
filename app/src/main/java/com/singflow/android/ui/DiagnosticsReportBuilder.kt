@@ -10,6 +10,17 @@ import java.util.Date
 import java.util.Locale
 
 /**
+ * 诊断报告中的订阅摘要。
+ */
+data class SubscriptionReport(
+    val name: String,
+    val upload: Long,
+    val download: Long,
+    val total: Long,
+    val expireAt: Long
+)
+
+/**
  * 诊断报告构建器。
  *
  * 把页面可见状态整理为可粘贴的纯文本，便于用户反馈问题；
@@ -29,7 +40,7 @@ object DiagnosticsReportBuilder {
         ruleHits: List<ClashCountedLabel>,
         chainHits: List<ClashCountedLabel>,
         latencyHistory: List<LatencySample>,
-        subscriptionCount: Int = 0,
+        subscriptions: List<SubscriptionReport> = emptyList(),
         timestampMs: Long = System.currentTimeMillis()
     ): String {
         val time = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date(timestampMs))
@@ -41,7 +52,10 @@ object DiagnosticsReportBuilder {
             appendLine("当前节点：${selectedNode?.displayName ?: "未选择"}")
             appendLine("Clash API：${if (available) "可用" else "不可用"}")
             appendLine("节点：${allNodes.size} 个（异常 ${problems.size} 个）")
-            appendLine("订阅：$subscriptionCount 个")
+            appendLine("订阅：${subscriptions.size} 个")
+            subscriptions.take(5).forEach { subscription ->
+                appendLine("  - ${subscription.name}：${formatSubscription(subscription)}")
+            }
             appendLine("代理组：${groups.size} 个")
             if (groups.isNotEmpty()) {
                 groups.take(5).forEach { group ->
@@ -77,5 +91,24 @@ object DiagnosticsReportBuilder {
                 }
             }
         }.trimEnd()
+    }
+
+    private fun formatSubscription(subscription: SubscriptionReport): String {
+        val parts = mutableListOf<String>()
+        if (subscription.total > 0) {
+            val used = subscription.upload + subscription.download
+            val remaining = (subscription.total - used).coerceAtLeast(0)
+            parts += "剩余 ${formatGb(remaining)} / ${formatGb(subscription.total)}"
+        }
+        if (subscription.expireAt > 0) {
+            val date = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(subscription.expireAt))
+            parts += "到期 $date"
+        }
+        return if (parts.isEmpty()) "无流量信息" else parts.joinToString(" · ")
+    }
+
+    private fun formatGb(bytes: Long): String {
+        val gb = bytes / 1024.0 / 1024.0 / 1024.0
+        return String.format(Locale.US, "%.1f GB", gb)
     }
 }

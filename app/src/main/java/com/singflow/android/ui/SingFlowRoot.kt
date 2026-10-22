@@ -275,7 +275,15 @@ fun SingFlowRoot(viewModel: MainViewModel) {
                     selectedNode = selectedNode,
                     onBack = { navController.popBackStack() },
                     allNodes = nodes,
-                    subscriptionCount = subscriptions.size,
+                    subscriptions = subscriptions.map { subscription ->
+                        com.singflow.android.ui.SubscriptionReport(
+                            name = subscription.name,
+                            upload = subscription.upload,
+                            download = subscription.download,
+                            total = subscription.total,
+                            expireAt = subscription.expireAt
+                        )
+                    },
                     onOpenNodeDetail = { node ->
                         navController.navigate("node-detail/${node.id}") {
                             launchSingleTop = true

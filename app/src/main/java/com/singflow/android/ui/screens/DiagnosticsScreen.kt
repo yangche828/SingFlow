@@ -67,7 +67,7 @@ fun DiagnosticsScreen(
     selectedNode: ProxyNode?,
     onBack: () -> Unit,
     allNodes: List<ProxyNode> = emptyList(),
-    subscriptionCount: Int = 0,
+    subscriptions: List<com.singflow.android.ui.SubscriptionReport> = emptyList(),
     onOpenNodeDetail: (ProxyNode) -> Unit = {},
     diagnosticsViewModel: DiagnosticsViewModel = hiltViewModel()
 ) {
@@ -83,7 +83,7 @@ fun DiagnosticsScreen(
         ruleHits = state.ruleHits,
         chainHits = state.chainHits,
         latencyHistory = state.latencyHistory,
-        subscriptionCount = subscriptionCount
+        subscriptions = subscriptions
     )
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("text/plain")
