@@ -1,0 +1,6 @@
+== R4 应用级国家分流验收 2026-10-23T02:01:37.6803023+08:00 ==
+rule=[('com.android.settings', 'COUNTRY', 'JP')]
+config_fragment="package_name":["com.android.settings"],"action":"route","outbound":"group-JP"},{"rule_set":["geosite-cn","geoip-cn"],"action":"route","outbound":"direct"}],"rule_set":[{"type":"local","tag":"geosite-
+tun=172.19.0.1/30 (tun1 after rule hot-reload)
+http204=204
+pid=3013

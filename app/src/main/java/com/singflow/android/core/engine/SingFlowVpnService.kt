@@ -73,6 +73,8 @@ class SingFlowVpnService : VpnService() {
     private var monitor: TrafficAndLogMonitor? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var failoverJob: Job? = null
+    private var engineJob: Job? = null
+    private var networkTracker: UnderlyingNetworkTracker? = null
 
     private var currentConfig: String = ""
     private var currentNodeId: String = ""
@@ -134,6 +136,9 @@ class SingFlowVpnService : VpnService() {
             stopSelf()
             return
         }
+        engineJob?.cancel()
+        failoverJob?.cancel()
+        failoverJob = null
         currentConfig = config
         currentNodeId = intent?.getStringExtra(EXTRA_NODE_ID).orEmpty()
         currentNodeName = intent?.getStringExtra(EXTRA_NODE_NAME).orEmpty()
@@ -146,13 +151,14 @@ class SingFlowVpnService : VpnService() {
             engineMode = "STARTING"
         )
         startForegroundCompat(VpnStatus.CONNECTING)
+        startNetworkTracker()
 
         // 原生模式由 libbox 回调 openTun；诊断模式直接建立 TUN。
         val libbox = LibboxBridge(this) { message -> VpnStateRepository.addLog("INFO", message) }
         bridge = libbox
 
         // 内核初始化会阻塞到 TUN 建立完成，必须离开主线程，避免 ANR。
-        scope.launch(Dispatchers.IO) {
+        engineJob = scope.launch(Dispatchers.IO) {
             val started = if (libbox.isNativeAvailable) {
                 libbox.start(
                     configJson = config,
@@ -216,6 +222,7 @@ class SingFlowVpnService : VpnService() {
         currentConfig = config
         failoverJob?.cancel()
         failoverJob = null
+        engineJob?.cancel()
         VpnStateRepository.setStatus(
             status = VpnStatus.CONNECTING,
             nodeId = currentNodeId,
@@ -226,7 +233,7 @@ class SingFlowVpnService : VpnService() {
         bridge?.stop()
         val libbox = LibboxBridge(this) { message -> VpnStateRepository.addLog("INFO", message) }
         bridge = libbox
-        scope.launch(Dispatchers.IO) {
+        engineJob = scope.launch(Dispatchers.IO) {
             val started = libbox.isNativeAvailable && libbox.start(
                 configJson = config,
                 baseDir = com.singflow.android.SingFlowApp.baseDir.absolutePath,
@@ -248,6 +255,20 @@ class SingFlowVpnService : VpnService() {
             updateNotification()
             startFailoverLoop()
         }
+    }
+
+    /**
+     * 注册物理网络监听；Wi-Fi ↔ 5G 切换时重新绑定 VPN 底层网络。
+     */
+    private fun startNetworkTracker() {
+        networkTracker?.unregister()
+        networkTracker = UnderlyingNetworkTracker(this, scope) { network ->
+            if (network == null) {
+                VpnStateRepository.addLog("WARN", "物理网络断开，等待系统重新连接")
+            } else {
+                VpnStateRepository.addLog("INFO", "物理网络已切换，底层网络重绑完成")
+            }
+        }.also { it.register() }
     }
 
     /**
@@ -511,6 +532,10 @@ class SingFlowVpnService : VpnService() {
         monitor = null
         failoverJob?.cancel()
         failoverJob = null
+        engineJob?.cancel()
+        engineJob = null
+        networkTracker?.unregister()
+        networkTracker = null
         runCatching { bridge?.stop() }
         bridge = null
         runCatching { tunInterface?.close() }

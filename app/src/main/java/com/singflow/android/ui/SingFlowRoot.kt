@@ -32,6 +32,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.singflow.android.ui.components.ImportBottomSheet
+import com.singflow.android.ui.screens.AppRoutingScreen
 import com.singflow.android.ui.screens.DashboardScreen
 import com.singflow.android.ui.screens.LogsScreen
 import com.singflow.android.ui.screens.NodesScreen
@@ -58,6 +59,7 @@ fun SingFlowRoot(viewModel: MainViewModel) {
     val importing by viewModel.importing.collectAsStateWithLifecycle()
     val importMessage by viewModel.importMessage.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
+    val appRouteRules by viewModel.appRouteRules.collectAsStateWithLifecycle()
 
     var showImportSheet by remember { mutableStateOf(false) }
 
@@ -173,7 +175,23 @@ fun SingFlowRoot(viewModel: MainViewModel) {
                 SettingsScreen(
                     settings = settings,
                     countries = countries,
+                    appRuleCount = appRouteRules.size,
+                    onOpenAppRouting = {
+                        navController.navigate("app-routing") {
+                            launchSingleTop = true
+                        }
+                    },
                     onUpdate = { updated -> viewModel.updateSettings { updated } }
+                )
+            }
+            composable("app-routing") {
+                AppRoutingScreen(
+                    rules = appRouteRules,
+                    countries = countries,
+                    multiNodeEnabled = settings.countryRoutingEnabled,
+                    onBack = { navController.popBackStack() },
+                    onSave = { rule -> viewModel.saveAppRouteRule(context, rule) },
+                    onDelete = { packageName -> viewModel.deleteAppRouteRule(context, packageName) }
                 )
             }
         }

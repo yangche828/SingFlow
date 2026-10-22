@@ -67,12 +67,16 @@ import kotlinx.coroutines.withContext
  *
  * @param settings 当前设置
  * @param countries 节点库中实际存在的国家/地区（代码 to 中文名），用于默认国家选择
+ * @param appRuleCount 已设置的应用分流规则数量
+ * @param onOpenAppRouting 打开应用级国家分流页面
  * @param onUpdate 保存设置
  */
 @Composable
 fun SettingsScreen(
     settings: AppSettings,
     countries: List<Pair<String, String>> = emptyList(),
+    appRuleCount: Int = 0,
+    onOpenAppRouting: () -> Unit = {},
     onUpdate: (AppSettings) -> Unit
 ) {
     var remoteDns by remember(settings.remoteDns) { mutableStateOf(settings.remoteDns) }
@@ -197,6 +201,25 @@ fun SettingsScreen(
                     Text("选择应用（已选 ${settings.perAppPackages.size} 个）")
                 }
             }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        SettingsSection(title = "应用与分流") {
+            OutlinedButton(
+                onClick = onOpenAppRouting,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Rounded.Apps, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("按应用指定国家（已设置 $appRuleCount 个）")
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = "例如：AI 应用走美国、动漫应用走日本，其余跟随默认国家",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
 
         Spacer(modifier = Modifier.height(12.dp))

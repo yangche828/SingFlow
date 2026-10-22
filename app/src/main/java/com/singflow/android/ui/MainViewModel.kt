@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.singflow.android.core.config.SingBoxConfigPipeline
+import com.singflow.android.core.database.AppRouteRuleEntity
 import com.singflow.android.core.database.AppRouteRuleRepository
 import com.singflow.android.core.database.NodeRepository
 import com.singflow.android.core.database.PreferencesManager
@@ -43,7 +44,7 @@ class MainViewModel @Inject constructor(
     private val configPipeline: SingBoxConfigPipeline,
     private val latencyTester: NodeLatencyTester,
     private val clashApiClient: ClashApiClient,
-    appRouteRuleRepository: AppRouteRuleRepository
+    private val appRouteRuleRepository: AppRouteRuleRepository
 ) : ViewModel() {
 
     /** 全部节点。 */
@@ -51,7 +52,7 @@ class MainViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** 应用级国家分流规则。 */
-    private val appRouteRules = appRouteRuleRepository.observeAll()
+    val appRouteRules: StateFlow<List<AppRouteRuleEntity>> = appRouteRuleRepository.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** 全局设置。 */
@@ -275,6 +276,52 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch { preferencesManager.update(transform) }
     }
 
+    /**
+     * 保存应用级国家分流规则，并在已连接时热重载配置。
+     */
+    fun saveAppRouteRule(context: Context, rule: AppRouteRuleEntity) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { appRouteRuleRepository.save(rule) }
+            applyAppRouteRules(context, "已保存 ${rule.appName} 的分流规则")
+        }
+    }
+
+    /**
+     * 删除某应用的分流规则（恢复跟随全局）。
+     */
+    fun deleteAppRouteRule(context: Context, packageName: String) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { appRouteRuleRepository.delete(packageName) }
+            applyAppRouteRules(context, "已恢复 $packageName 跟随全局")
+        }
+    }
+
+    /**
+     * 应用分流规则：已连接且多节点分组开启时立即热重载，否则提示生效条件。
+     */
+    private suspend fun applyAppRouteRules(context: Context, message: String) {
+        val node = selectedNode.value ?: return
+        val currentSettings = settings.value
+        if (!currentSettings.countryRoutingEnabled || groupedNodes(node).size <= 1) {
+            _message.value = "$message；需开启「多节点国家分组」并重新连接后生效"
+            return
+        }
+        val rules = withContext(Dispatchers.IO) { appRouteRuleRepository.getAll() }
+        val config = runCatching {
+            compileCompact(node, currentSettings, rules)
+        }.getOrElse {
+            _message.value = "配置编译失败: ${it.message}"
+            return
+        }
+        val status = VpnStateRepository.snapshot().status
+        if (status == VpnStatus.CONNECTED || status == VpnStatus.CONNECTING) {
+            VpnControl.reload(context.applicationContext, config, node.id, node.displayName, currentSettings)
+            _message.value = "$message，已热重载分流配置"
+        } else {
+            _message.value = "$message，下次连接生效"
+        }
+    }
+
     /** 清空日志。 */
     fun clearLogs() {
         VpnStateRepository.clearLogs()
@@ -305,7 +352,11 @@ class MainViewModel @Inject constructor(
     }
 
     /** 单节点 / 多节点自适应紧凑配置。 */
-    private fun compileCompact(node: ProxyNode, currentSettings: AppSettings): String {
+    private fun compileCompact(
+        node: ProxyNode,
+        currentSettings: AppSettings,
+        rules: List<AppRouteRuleEntity> = appRouteRules.value
+    ): String {
         val dir = com.singflow.android.SingFlowApp.ruleSetDir.absolutePath
         val all = groupedNodes(node)
         return if (currentSettings.countryRoutingEnabled && all.size > 1) {
@@ -313,7 +364,7 @@ class MainViewModel @Inject constructor(
                 nodes = all,
                 selectedNodeId = node.id,
                 settings = currentSettings,
-                appRouteRules = appRouteRules.value,
+                appRouteRules = rules,
                 ruleSetDir = dir
             )
         } else {

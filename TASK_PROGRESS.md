@@ -317,3 +317,26 @@ AFTER_204=204
 2. 七项切换参数滑块、`AtomicFile` 配置写入、`setUnderlyingNetworks` 物理网络重绑、内核生命周期 `Mutex`。
 3. 主页展示当前国家/健康度；省电状态机接入服务采样与通知刷新。
 4. 对已修复的三个运行时缺陷补回归测试/验收脚本断言。
+
+### R4：应用级国家分流 UI、物理网络重绑与内核任务串行化（已完成）
+
+| 模块 | 交付内容 | 验证 |
+| :--- | :--- | :--- |
+| 应用分流页 | 新增 `AppRoutingScreen`：搜索已安装应用、规则置顶、当前路由标签（跟随全局 / 国家 / 收藏 / 直连 / 阻断）；点击弹出模式选择，支持 4 个可用国家 | API 33 截图 |
+| 分流保存 | `MainViewModel.saveAppRouteRule/deleteAppRouteRule`：写入 Room 后，已连接且多节点分组开启时用最新规则编译并 `VpnControl.reload` 热重载；否则提示生效条件 | `last_config` 中确认规则已写入 |
+| 设置入口 | 设置页新增「应用与分流」卡片，显示已设置数量，点击进入分流页 | 截图 |
+| 物理网络重绑 | 新增 `UnderlyingNetworkTracker`：监听非 VPN 物理网络，`setUnderlyingNetworks` 重绑，250ms 防抖后写日志；Wi-Fi ↔ 5G 切换不再卡旧网络 | 编译 + 运行 |
+| 内核任务串行化 | `SingFlowVpnService` 新增 `engineJob`，start/reload 先取消上一内核任务，避免快速连点导致两套 Go 运行时/两个 TUN | 编译 |
+| 运行时验收 | `com.android.settings` 指定 🇯🇵 日本：Room 规则 `COUNTRY/JP`，热重载配置包含 `package_name:["com.android.settings"] → group-JP`；TUN 重建为 `tun1 172.19.0.1/30`，mixed 代理 `generate_204=204` | `acceptance/r4_app_routing_runtime.log` |
+
+> 说明：应用/国家规则属于路由段，sing-box Clash API 不支持运行时修改规则，因此保存规则会重建 TUN（接口名可能从 tun0 变为 tun1）；普通的节点切换仍走 Selector，不重建 TUN。
+
+证据：`acceptance/r4_app_routing_list.png`、`acceptance/r4_app_routing_assigned.png`、
+`acceptance/r4_after_routing_reload.png`、`acceptance/r4_app_routing_runtime.log`。
+
+### 下一轮（R5）
+
+1. 七项切换参数滑块 + 连接诊断面板（最近分流命中、当前 Selector、延迟历史）。
+2. 省电状态机接入服务：息屏 15s 暂停速率采样/通知刷新/主动巡检，亮屏恢复。
+3. 主页展示当前国家、健康分与节点名；订阅自动更新 Worker。
+4. 为 `UnderlyingNetworkTracker`、应用规则热重载补回归测试/脚本断言。
