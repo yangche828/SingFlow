@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Checklist
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.DeleteSweep
@@ -28,6 +29,7 @@ import androidx.compose.material.icons.rounded.Done
 import androidx.compose.material.icons.rounded.Inbox
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Public
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Sort
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
@@ -41,6 +43,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -88,10 +91,14 @@ fun NodesScreen(
     var confirmGeoScan by remember { mutableStateOf(false) }
     var showGroupOrder by remember { mutableStateOf(false) }
     var showNodeMenu by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
     var batchHint by remember { mutableStateOf<String?>(null) }
     val clipboard = LocalClipboardManager.current
-    val groups = remember(nodes, sortByLatency, countryGroupOrder) {
-        buildGroups(nodes, sortByLatency, countryGroupOrder)
+    val filteredNodes = remember(nodes, searchQuery) {
+        filterNodes(nodes, searchQuery)
+    }
+    val groups = remember(filteredNodes, sortByLatency, countryGroupOrder) {
+        buildGroups(filteredNodes, sortByLatency, countryGroupOrder)
     }
 
     LaunchedEffect(nodes) {
@@ -312,6 +319,24 @@ fun NodesScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            placeholder = { Text("搜索节点 / 服务器 / 国家") },
+            leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+            trailingIcon = {
+                if (searchQuery.isNotEmpty()) {
+                    IconButton(onClick = { searchQuery = "" }) {
+                        Icon(Icons.Rounded.Close, contentDescription = "清除搜索")
+                    }
+                }
+            },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
         if (groups.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -328,19 +353,25 @@ fun NodesScreen(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "还没有节点",
+                        text = if (nodes.isEmpty()) "还没有节点" else "没有匹配的节点",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "点击右上角 + 导入，或生成示例节点",
+                        text = if (nodes.isEmpty()) {
+                            "点击右上角 + 导入，或生成示例节点"
+                        } else {
+                            "换个关键词试试"
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    OutlinedButton(onClick = onImportClick) {
-                        Icon(Icons.Rounded.Add, contentDescription = null)
-                        Text("  导入节点")
+                    if (nodes.isEmpty()) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        OutlinedButton(onClick = onImportClick) {
+                            Icon(Icons.Rounded.Add, contentDescription = null)
+                            Text("  导入节点")
+                        }
                     }
                 }
             }
@@ -501,6 +532,21 @@ internal fun buildGroups(
             groups += NodeGroup(title, sorted(list), key.first)
         }
     return groups
+}
+
+/**
+ * 节点搜索过滤：名称、服务器、国家（中文名/代码）大小写不敏感。
+ */
+internal fun filterNodes(nodes: List<ProxyNode>, query: String): List<ProxyNode> {
+    val keyword = query.trim()
+    if (keyword.isBlank()) return nodes
+    return nodes.filter { node ->
+        node.displayName.contains(keyword, ignoreCase = true) ||
+            node.name.contains(keyword, ignoreCase = true) ||
+            node.server.contains(keyword, ignoreCase = true) ||
+            node.countryNameCn.contains(keyword, ignoreCase = true) ||
+            node.countryCode.contains(keyword, ignoreCase = true)
+    }
 }
 
 /**

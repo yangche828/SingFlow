@@ -3,6 +3,7 @@ package com.singflow.android.ui.screens
 import com.singflow.android.core.model.ProtocolType
 import com.singflow.android.core.model.ProxyNode
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -21,6 +22,20 @@ class NodesGroupingTest {
         countryNameCn = name,
         isFavorite = favorite
     )
+
+    @Test
+    fun `search matches name server and country`() {
+        val nodes = listOf(
+            node("jp", "JP", "日本").copy(name = "东京节点", server = "jp.example.com"),
+            node("us", "US", "美国").copy(name = "洛杉矶", server = "us.example.com")
+        )
+
+        assertEquals(1, filterNodes(nodes, "东京").size)
+        assertEquals(1, filterNodes(nodes, "us.example").size)
+        assertEquals(1, filterNodes(nodes, "美国").size)
+        assertEquals(2, filterNodes(nodes, "  ").size)
+        assertTrue(filterNodes(nodes, "不存在").isEmpty())
+    }
 
     @Test
     fun `favorites stay first and custom country order applies`() {
