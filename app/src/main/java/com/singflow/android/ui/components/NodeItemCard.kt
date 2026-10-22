@@ -18,6 +18,7 @@ import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -44,6 +45,9 @@ import com.singflow.android.ui.theme.latencyColor
  * @param onClick 点击选择
  * @param onDelete 删除
  * @param onToggleFavorite 切换收藏
+ * @param selectionMode 是否处于批量选择模式
+ * @param batchSelected 批量模式下是否已勾选
+ * @param onToggleSelect 批量模式下切换勾选
  */
 @Composable
 fun NodeItemCard(
@@ -52,21 +56,28 @@ fun NodeItemCard(
     onClick: () -> Unit,
     onDelete: () -> Unit,
     onToggleFavorite: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    selectionMode: Boolean = false,
+    batchSelected: Boolean = false,
+    onToggleSelect: () -> Unit = {}
 ) {
     val badge = node.protocol.badgeColor()
     val healthTint = healthColor(node.healthScore)
     Card(
-        onClick = onClick,
+        onClick = { if (selectionMode) onToggleSelect() else onClick() },
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = if (selected) {
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+            containerColor = when {
+                selectionMode && batchSelected -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f)
+                selected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
+                else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
             }
         ),
-        border = if (selected) BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.65f)) else null
+        border = when {
+            selectionMode && batchSelected -> BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary)
+            selected -> BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.65f))
+            else -> null
+        }
     ) {
         Row(
             modifier = Modifier
@@ -74,6 +85,14 @@ fun NodeItemCard(
                 .padding(start = 12.dp, end = 4.dp, top = 10.dp, bottom = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            if (selectionMode) {
+                Checkbox(
+                    checked = batchSelected,
+                    onCheckedChange = { onToggleSelect() },
+                    modifier = Modifier.size(28.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+            }
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(10.dp))
@@ -136,26 +155,28 @@ fun NodeItemCard(
                 }
             }
 
-            IconButton(onClick = onToggleFavorite, modifier = Modifier.size(32.dp)) {
-                Icon(
-                    imageVector = if (node.isFavorite) Icons.Rounded.Star else Icons.Rounded.StarBorder,
-                    contentDescription = if (node.isFavorite) "取消收藏" else "收藏节点",
-                    modifier = Modifier.size(18.dp),
-                    tint = if (node.isFavorite) {
-                        MaterialTheme.colorScheme.tertiary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    }
-                )
-            }
+            if (!selectionMode) {
+                IconButton(onClick = onToggleFavorite, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        imageVector = if (node.isFavorite) Icons.Rounded.Star else Icons.Rounded.StarBorder,
+                        contentDescription = if (node.isFavorite) "取消收藏" else "收藏节点",
+                        modifier = Modifier.size(18.dp),
+                        tint = if (node.isFavorite) {
+                            MaterialTheme.colorScheme.tertiary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
+                }
 
-            IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
-                Icon(
-                    imageVector = Icons.Rounded.DeleteOutline,
-                    contentDescription = "删除节点",
-                    modifier = Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
-                )
+                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        imageVector = Icons.Rounded.DeleteOutline,
+                        contentDescription = "删除节点",
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
+                    )
+                }
             }
         }
     }

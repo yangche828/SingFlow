@@ -1,0 +1,6 @@
+== R11 节点批量管理验收 ==
+nodes=6 groups=4 favorites=2
+batch_mode=已选 2 个
+batch_favorite=已取消收藏 2 个节点 / 已收藏 2 个节点
+actions=全选/收藏/取消收藏/复制链接/删除
+screenshot=acceptance/r11_batch_selection.png

@@ -269,6 +269,32 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    /** 批量收藏 / 取消收藏。 */
+    fun setFavorite(nodes: Set<String>, favorite: Boolean) {
+        if (nodes.isEmpty()) return
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                nodes.forEach { nodeRepository.setFavorite(it, favorite) }
+            }
+            _message.value = if (favorite) "已收藏 ${nodes.size} 个节点" else "已取消收藏 ${nodes.size} 个节点"
+        }
+    }
+
+    /** 批量删除节点；若删除当前节点则自动选择下一个。 */
+    fun deleteNodes(nodeIds: Set<String>) {
+        if (nodeIds.isEmpty()) return
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                nodeIds.forEach { nodeRepository.delete(it) }
+            }
+            if (settings.value.selectedNodeId in nodeIds) {
+                val next = nodes.value.firstOrNull { it.id !in nodeIds }
+                preferencesManager.setSelectedNode(next?.id.orEmpty())
+            }
+            _message.value = "已删除 ${nodeIds.size} 个节点"
+        }
+    }
+
     /** 清空全部节点。 */
     fun clearNodes() {
         viewModelScope.launch {

@@ -1,5 +1,6 @@
 package com.singflow.android.ui.screens
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,12 +14,18 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.Checklist
+import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.DeleteSweep
+import androidx.compose.material.icons.rounded.Done
 import androidx.compose.material.icons.rounded.Inbox
 import androidx.compose.material.icons.rounded.Sort
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
@@ -27,13 +34,17 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.singflow.android.core.model.ProxyNode
@@ -53,11 +64,23 @@ fun NodesScreen(
     onToggleFavorite: (ProxyNode) -> Unit,
     onTestAll: () -> Unit,
     onImportClick: () -> Unit,
-    onClearAll: () -> Unit
+    onClearAll: () -> Unit,
+    onBatchDelete: (Set<String>) -> Unit = {},
+    onBatchFavorite: (Set<String>, Boolean) -> Unit = { _, _ -> }
 ) {
     var sortByLatency by remember { mutableStateOf(false) }
+    var selectionMode by remember { mutableStateOf(false) }
+    var selectedIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var confirmBatchDelete by remember { mutableStateOf(false) }
+    var batchHint by remember { mutableStateOf<String?>(null) }
+    val clipboard = LocalClipboardManager.current
     val groups = remember(nodes, sortByLatency) {
         buildGroups(nodes, sortByLatency)
+    }
+
+    LaunchedEffect(nodes) {
+        selectedIds = selectedIds.intersect(nodes.map { it.id }.toSet())
+        if (nodes.isEmpty()) selectionMode = false
     }
 
     Column(
@@ -73,7 +96,7 @@ fun NodesScreen(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "节点库",
+                    text = if (selectionMode) "已选 ${selectedIds.size} 个" else "节点库",
                     style = MaterialTheme.typography.headlineLarge,
                     fontWeight = FontWeight.Bold
                 )
@@ -83,50 +106,143 @@ fun NodesScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            IconButton(onClick = onImportClick) {
-                Icon(Icons.Rounded.Add, contentDescription = "导入节点")
-            }
-            IconButton(onClick = onClearAll) {
-                Icon(
-                    Icons.Rounded.DeleteSweep,
-                    contentDescription = "清空节点",
-                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
-                )
+            if (selectionMode) {
+                IconButton(onClick = {
+                    selectionMode = false
+                    selectedIds = emptySet()
+                    batchHint = null
+                }) {
+                    Icon(Icons.Rounded.Done, contentDescription = "完成批量选择")
+                }
+            } else {
+                IconButton(onClick = { selectionMode = true }) {
+                    Icon(Icons.Rounded.Checklist, contentDescription = "批量管理")
+                }
+                IconButton(onClick = onImportClick) {
+                    Icon(Icons.Rounded.Add, contentDescription = "导入节点")
+                }
+                IconButton(onClick = onClearAll) {
+                    Icon(
+                        Icons.Rounded.DeleteSweep,
+                        contentDescription = "清空节点",
+                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
+                    )
+                }
             }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Button(
-                onClick = onTestAll,
-                enabled = !testing && nodes.isNotEmpty(),
-                modifier = Modifier.weight(1f)
+        if (selectionMode) {
+            val allSelected = nodes.isNotEmpty() && selectedIds.size == nodes.size
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                if (testing) {
-                    CircularProgressIndicator(
+                OutlinedButton(
+                    onClick = {
+                        selectedIds = if (allSelected) emptySet() else nodes.map { it.id }.toSet()
+                    }
+                ) {
+                    Text(if (allSelected) "取消全选" else "全选")
+                }
+                OutlinedButton(
+                    onClick = {
+                        if (selectedIds.isEmpty()) {
+                            batchHint = "请先选择节点"
+                        } else {
+                            onBatchFavorite(selectedIds, true)
+                            batchHint = "已收藏 ${selectedIds.size} 个节点"
+                        }
+                    },
+                    enabled = selectedIds.isNotEmpty()
+                ) { Text("收藏") }
+                OutlinedButton(
+                    onClick = {
+                        if (selectedIds.isEmpty()) {
+                            batchHint = "请先选择节点"
+                        } else {
+                            onBatchFavorite(selectedIds, false)
+                            batchHint = "已取消收藏 ${selectedIds.size} 个节点"
+                        }
+                    },
+                    enabled = selectedIds.isNotEmpty()
+                ) { Text("取消收藏") }
+                OutlinedButton(
+                    onClick = {
+                        val links = nodes.filter { it.id in selectedIds }
+                            .mapNotNull { it.rawShareUri?.takeIf(String::isNotBlank) }
+                            .distinct()
+                        if (links.isEmpty()) {
+                            batchHint = "选中节点没有可导出的分享链接"
+                        } else {
+                            clipboard.setText(AnnotatedString(links.joinToString("\n")))
+                            batchHint = "已复制 ${links.size} 条分享链接"
+                        }
+                    },
+                    enabled = selectedIds.isNotEmpty()
+                ) {
+                    Icon(Icons.Rounded.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("复制链接")
+                }
+                OutlinedButton(
+                    onClick = { confirmBatchDelete = true },
+                    enabled = selectedIds.isNotEmpty()
+                ) {
+                    Icon(
+                        Icons.Rounded.DeleteOutline,
+                        contentDescription = null,
                         modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onPrimary
+                        tint = MaterialTheme.colorScheme.error
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("探活中…")
-                } else {
-                    Icon(Icons.Rounded.Bolt, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("一键探活")
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("删除", color = MaterialTheme.colorScheme.error)
                 }
             }
-            FilledTonalButton(
-                onClick = { sortByLatency = !sortByLatency },
-                modifier = Modifier.weight(1f)
+            batchHint?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 6.dp)
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(Icons.Rounded.Sort, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(if (sortByLatency) "延迟排序中" else "延迟排序")
+                Button(
+                    onClick = onTestAll,
+                    enabled = !testing && nodes.isNotEmpty(),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    if (testing) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("探活中…")
+                    } else {
+                        Icon(Icons.Rounded.Bolt, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("一键探活")
+                    }
+                }
+                FilledTonalButton(
+                    onClick = { sortByLatency = !sortByLatency },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Rounded.Sort, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(if (sortByLatency) "延迟排序中" else "延迟排序")
+                }
             }
         }
 
@@ -189,7 +305,16 @@ fun NodesScreen(
                             selected = node.id == selectedId,
                             onClick = { onSelect(node) },
                             onDelete = { onDelete(node.id) },
-                            onToggleFavorite = { onToggleFavorite(node) }
+                            onToggleFavorite = { onToggleFavorite(node) },
+                            selectionMode = selectionMode,
+                            batchSelected = node.id in selectedIds,
+                            onToggleSelect = {
+                                selectedIds = if (node.id in selectedIds) {
+                                    selectedIds - node.id
+                                } else {
+                                    selectedIds + node.id
+                                }
+                            }
                         )
                     }
                 }
@@ -198,6 +323,30 @@ fun NodesScreen(
                 }
             }
         }
+    }
+
+    if (confirmBatchDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmBatchDelete = false },
+            title = { Text("批量删除节点") },
+            text = { Text("将删除选中的 ${selectedIds.size} 个节点，确定继续？") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onBatchDelete(selectedIds)
+                        confirmBatchDelete = false
+                        selectionMode = false
+                        selectedIds = emptySet()
+                        batchHint = null
+                    }
+                ) {
+                    Text("删除", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmBatchDelete = false }) { Text("取消") }
+            }
+        )
     }
 }
 

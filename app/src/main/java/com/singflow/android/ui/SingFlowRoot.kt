@@ -157,7 +157,9 @@ fun SingFlowRoot(viewModel: MainViewModel) {
                         viewModel.clearImportMessage()
                         showImportSheet = true
                     },
-                    onClearAll = viewModel::clearNodes
+                    onClearAll = viewModel::clearNodes,
+                    onBatchDelete = viewModel::deleteNodes,
+                    onBatchFavorite = { ids, favorite -> viewModel.setFavorite(ids, favorite) }
                 )
             }
             composable("logs") {
