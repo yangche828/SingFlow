@@ -1,0 +1,6 @@
+== R31 Gzip 备份验收 ==
+toggle=Gzip 压缩 → singflow-backup.json.gz
+file_magic=1f8b bytes=2312 (plain JSON 9860 bytes)
+decoded_keys=appRules/exportedAt/nodes/settings nodes=6
+restore=恢复完成：6 个节点、1 个订阅、1 条应用规则，请重新连接
+screenshot=acceptance/r31_gzip_backup.png

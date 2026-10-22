@@ -1024,3 +1024,29 @@ clipboard_preview=Base64 dmxlc3M6...（vless:// 链接）
 2. 连接详情按域名加入分流规则。
 3. 订阅 Worker 全流程集成测试（Room + MockWebServer）。
 4. 精选节点导出为 sing-box JSON 文件（SAF）。
+
+### R31：Gzip 压缩备份（已完成）
+
+| 模块 | 交付内容 | 验证 |
+| :--- | :--- | :--- |
+| 压缩 | `BackupCompression`：Gzip 压缩/解压与魔数识别，兼容旧明文备份 | 3 个单测 |
+| 导出 | 备份区新增「Gzip 压缩」开关，独立 `application/gzip` 保存器，文件名 `.json.gz` | 运行 |
+| 恢复 | 读取字节后自动识别 Gzip，再进入加密/明文恢复流程 | 运行 |
+| 体积 | 同一份备份：明文 9860 B → Gzip 2312 B | 运行 |
+
+**运行时验收**：
+
+```text
+file_magic=1f8b bytes=2312 (plain 9860)
+decoded_keys=appRules/exportedAt/nodes/settings nodes=6
+restore=恢复完成：6 个节点、1 个订阅、1 条应用规则
+```
+
+证据：`acceptance/r31_gzip_backup.png`、`acceptance/r31_gzip_backup_runtime.log`。
+
+### 下一轮（R32）
+
+1. 分组拖拽手势（替代上/下按钮）。
+2. 连接详情按域名加入分流规则。
+3. 订阅 Worker 全流程集成测试（Room + MockWebServer）。
+4. 精选节点导出为 sing-box JSON 文件（SAF）。

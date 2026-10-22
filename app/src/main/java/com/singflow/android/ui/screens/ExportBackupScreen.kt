@@ -33,6 +33,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.AlertDialog
@@ -61,6 +62,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.singflow.android.core.export.QrCodeGenerator
 import com.singflow.android.core.export.SelectedNodeExporter
 import com.singflow.android.core.backup.BackupCipher
+import com.singflow.android.core.backup.BackupCompression
 import com.singflow.android.core.model.ProxyNode
 import com.singflow.android.ui.BackupViewModel
 import kotlinx.coroutines.Dispatchers
@@ -91,41 +93,60 @@ fun ExportBackupScreen(
     val message by backupViewModel.message.collectAsStateWithLifecycle()
     var showWebDavDialog by remember { mutableStateOf(false) }
     var backupPassphrase by remember { mutableStateOf("") }
+    var gzipBackup by remember { mutableStateOf(false) }
 
-    val exportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/json")
-    ) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        scope.launch {
-            runCatching {
-                val payload = backupViewModel.buildBackup(backupPassphrase)
-                withContext(Dispatchers.IO) {
-                    context.contentResolver.openOutputStream(uri)?.use { output ->
-                        output.write(payload.toByteArray(Charsets.UTF_8))
-                    } ?: error("无法写入文件")
+    val exportTo: (android.net.Uri?) -> Unit = { uri ->
+        if (uri != null) {
+            scope.launch {
+                runCatching {
+                    val payload = backupViewModel.buildBackup(backupPassphrase)
+                    val bytes = if (gzipBackup) {
+                        BackupCompression.gzip(payload)
+                    } else {
+                        payload.toByteArray(Charsets.UTF_8)
+                    }
+                    withContext(Dispatchers.IO) {
+                        context.contentResolver.openOutputStream(uri)?.use { output ->
+                            output.write(bytes)
+                        } ?: error("无法写入文件")
+                    }
+                }.onSuccess {
+                    backupViewModel.notify(
+                        when {
+                            backupPassphrase.isNotBlank() && gzipBackup -> "加密 Gzip 备份已导出"
+                            backupPassphrase.isNotBlank() -> "加密备份已导出"
+                            gzipBackup -> "Gzip 备份已导出"
+                            else -> "备份已导出"
+                        }
+                    )
+                }.onFailure {
+                    backupViewModel.notify("导出失败：${it.message}")
                 }
-            }.onSuccess {
-                backupViewModel.notify(
-                    if (backupPassphrase.isBlank()) "备份已导出" else "加密备份已导出"
-                )
-            }.onFailure {
-                backupViewModel.notify("导出失败：${it.message}")
             }
         }
     }
+
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri -> exportTo(uri) }
+
+    val gzipExportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/gzip")
+    ) { uri -> exportTo(uri) }
 
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
-            val text = runCatching {
+            val bytes = runCatching {
                 withContext(Dispatchers.IO) {
-                    context.contentResolver.openInputStream(uri)?.use { input ->
-                        input.readBytes().toString(Charsets.UTF_8)
-                    }
+                    context.contentResolver.openInputStream(uri)?.use { input -> input.readBytes() }
                 }
             }.getOrNull()
+            val text = bytes?.let { backupBytes ->
+                BackupCompression.gunzip(backupBytes) ?: backupBytes.toString(Charsets.UTF_8)
+            }
             if (text.isNullOrBlank()) {
                 backupViewModel.notify("读取备份文件失败")
             } else if (BackupCipher.isEncrypted(text) && backupPassphrase.isBlank()) {
@@ -387,10 +408,28 @@ fun ExportBackupScreen(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Gzip 压缩", style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    text = "导出为 .json.gz，恢复时自动识别",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(checked = gzipBackup, onCheckedChange = { gzipBackup = it })
+        }
         Spacer(modifier = Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(
-                onClick = { exportLauncher.launch("singflow-backup.json") },
+                onClick = {
+                    if (gzipBackup) {
+                        gzipExportLauncher.launch("singflow-backup.json.gz")
+                    } else {
+                        exportLauncher.launch("singflow-backup.json")
+                    }
+                },
                 modifier = Modifier.weight(1f)
             ) {
                 Icon(Icons.Rounded.FileUpload, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -398,7 +437,7 @@ fun ExportBackupScreen(
                 Text("导出备份")
             }
             OutlinedButton(
-                onClick = { importLauncher.launch(arrayOf("application/json", "text/*")) },
+                onClick = { importLauncher.launch(arrayOf("application/json", "application/gzip", "text/*")) },
                 modifier = Modifier.weight(1f)
             ) {
                 Icon(Icons.Rounded.FileDownload, contentDescription = null, modifier = Modifier.size(16.dp))
