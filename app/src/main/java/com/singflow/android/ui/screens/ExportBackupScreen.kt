@@ -32,14 +32,18 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,6 +52,8 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -64,12 +70,16 @@ import kotlinx.coroutines.withContext
  *
  * @param nodes 全部节点
  * @param selectedNode 当前节点
+ * @param webdavUrl 已配置的 WebDAV 地址
+ * @param webdavUsername 已配置的 WebDAV 用户名
  * @param onBack 返回
  */
 @Composable
 fun ExportBackupScreen(
     nodes: List<ProxyNode>,
     selectedNode: ProxyNode?,
+    webdavUrl: String = "",
+    webdavUsername: String = "",
     onBack: () -> Unit,
     backupViewModel: BackupViewModel = hiltViewModel()
 ) {
@@ -77,6 +87,7 @@ fun ExportBackupScreen(
     val clipboard = LocalClipboardManager.current
     val scope = rememberCoroutineScope()
     val message by backupViewModel.message.collectAsStateWithLifecycle()
+    var showWebDavDialog by remember { mutableStateOf(false) }
 
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
@@ -320,8 +331,121 @@ fun ExportBackupScreen(
                 Text("恢复备份")
             }
         }
+        Spacer(modifier = Modifier.height(18.dp))
+        Text(
+            text = "WebDAV 云备份",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = if (webdavUrl.isBlank()) {
+                "未配置。填写 WebDAV 文件地址（含目录与文件名），例如 https://dav.example.com/singflow/backup.json"
+            } else {
+                "地址：$webdavUrl" + if (webdavUsername.isBlank()) "" else "（用户：$webdavUsername）"
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedButton(
+            onClick = { showWebDavDialog = true },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("配置 WebDAV")
+        }
+        if (webdavUrl.isNotBlank()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = { backupViewModel.uploadWebDav() },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Rounded.FileUpload, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("上传备份")
+                }
+                OutlinedButton(
+                    onClick = { backupViewModel.downloadWebDav() },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Rounded.FileDownload, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("下载恢复")
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(28.dp))
     }
+
+    if (showWebDavDialog) {
+        WebDavDialog(
+            initialUrl = webdavUrl,
+            initialUsername = webdavUsername,
+            onDismiss = { showWebDavDialog = false },
+            onConfirm = { url, username, password ->
+                backupViewModel.saveWebDav(url, username, password)
+                showWebDavDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun WebDavDialog(
+    initialUrl: String,
+    initialUsername: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String, String, String) -> Unit
+) {
+    var url by remember(initialUrl) { mutableStateOf(initialUrl) }
+    var username by remember(initialUsername) { mutableStateOf(initialUsername) }
+    var password by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("WebDAV 配置") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = url,
+                    onValueChange = { url = it },
+                    label = { Text("文件地址") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = username,
+                    onValueChange = { username = it },
+                    label = { Text("用户名（可空）") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("密码（留空则保留原密码）") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        keyboardType = KeyboardType.Password
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(url, username, password) }) {
+                Text("保存")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
+        }
+    )
 }
 
 private fun shareText(context: android.content.Context, text: String, title: String) {

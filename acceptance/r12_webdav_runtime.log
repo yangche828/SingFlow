@@ -1,0 +1,7 @@
+== R12 WebDAV 云备份验收 ==
+webdav_config=url=http://127.0.0.1:8089/backup.json user=test
+password_storage=AES-GCM ciphertext in DataStore (AndroidKeyStore)
+upload=PUT /backup.json 9860 bytes
+download=GET /backup.json 9860 bytes
+restore=已从 WebDAV 下载备份；恢复完成：6 个节点、1 个订阅、1 条应用规则，请重新连接
+screenshots=acceptance/r12_webdav_backup.png, acceptance/r12_webdav_config.png

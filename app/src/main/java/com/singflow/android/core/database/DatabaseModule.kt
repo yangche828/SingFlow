@@ -125,6 +125,13 @@ object DatabaseModule {
         )
     }
 
+    /** WebDAV 客户端。 */
+    @Provides
+    @Singleton
+    fun provideWebDavClient(okHttpClient: OkHttpClient): com.singflow.android.core.backup.WebDavClient {
+        return com.singflow.android.core.backup.WebDavClient(okHttpClient)
+    }
+
     /** 共享 OkHttp 客户端（测速 / Clash API）。 */
     @Provides
     @Singleton

@@ -240,6 +240,8 @@ fun SingFlowRoot(viewModel: MainViewModel) {
                 ExportBackupScreen(
                     nodes = nodes,
                     selectedNode = selectedNode,
+                    webdavUrl = settings.webdavUrl,
+                    webdavUsername = settings.webdavUsername,
                     onBack = { navController.popBackStack() }
                 )
             }

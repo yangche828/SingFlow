@@ -65,7 +65,10 @@ data class AppSettings(
     val fakeIpEnabled: Boolean = false,
     val countryRoutingEnabled: Boolean = false,
     val failover: FailoverConfig = FailoverConfig.DEFAULT,
-    val antiBlocking: AntiBlockingConfig = AntiBlockingConfig.DEFAULT
+    val antiBlocking: AntiBlockingConfig = AntiBlockingConfig.DEFAULT,
+    val webdavUrl: String = "",
+    val webdavUsername: String = "",
+    val webdavPasswordCipher: String = ""
 ) {
     companion object {
         val DEFAULT = AppSettings()

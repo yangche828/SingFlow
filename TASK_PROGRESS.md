@@ -538,3 +538,33 @@ batch_favorite=已取消收藏 2 个节点 / 已收藏 2 个节点
 2. 节点分组拖拽排序（收藏组/国家组）。
 3. 节点真实出口 GeoIP 批量探测与自动命名。
 4. Worker 失败重试策略细化（指数退避、最大重试次数）。
+
+### R12：WebDAV 云备份与密码加密（已完成）
+
+| 模块 | 交付内容 | 验证 |
+| :--- | :--- | :--- |
+| 加密存储 | `WebDavCrypto`：AES/GCM/NoPadding + AndroidKeyStore 密钥，DataStore 仅保存 `Base64(IV+密文)` | 运行确认密文 |
+| WebDAV 客户端 | `WebDavClient`：PUT 上传 / GET 下载单个 JSON，Basic Auth，60 秒超时、10 MiB 上限 | 运行验证 |
+| 设置字段 | `AppSettings` 新增 `webdavUrl`、`webdavUsername`、`webdavPasswordCipher` | 持久化 |
+| UI | 导出与备份页新增「WebDAV 云备份」：配置对话框（地址/用户名/密码）、上传备份、下载恢复 | 截图 |
+| 安全 | 明文密码不落盘；密码留空表示保留原密码 | 代码 |
+
+**运行时验收**：
+
+```text
+webdav_config=url=http://127.0.0.1:8089/backup.json user=test
+password_storage=AES-GCM ciphertext in DataStore (AndroidKeyStore)
+upload=PUT /backup.json 9860 bytes
+download=GET /backup.json 9860 bytes
+restore=已从 WebDAV 下载备份；恢复完成：6 个节点、1 个订阅、1 条应用规则
+```
+
+证据：`acceptance/r12_webdav_backup.png`、`acceptance/r12_webdav_config.png`、
+`acceptance/r12_webdav_runtime.log`、`scripts/dev/webdav-server.js`。
+
+### 下一轮（R13）
+
+1. 节点分组拖拽排序（收藏组/国家组）。
+2. 节点真实出口 GeoIP 批量探测与自动命名。
+3. Worker 失败重试策略细化（指数退避、最大重试次数）。
+4. 备份加密（可选口令加密，防止 WebDAV 服务端读取节点凭据）。
