@@ -50,7 +50,12 @@ class CountryGroupInterceptor : ConfigInterceptor {
             if (node.protocol == ProtocolType.WIREGUARD) {
                 endpoints += ProxyOutboundFactory.buildWireGuardEndpoint(node, tag, resolver)
             } else {
-                outbounds += ProxyOutboundFactory.buildProxyOutbound(node, tag, resolver)
+                outbounds += ProxyOutboundFactory.buildProxyOutbound(
+                    node,
+                    tag,
+                    resolver,
+                    context.settings.antiBlocking
+                )
             }
         }
 

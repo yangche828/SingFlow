@@ -58,6 +58,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
 import com.singflow.android.core.model.AppSettings
+import com.singflow.android.core.model.AntiBlockingConfig
 import com.singflow.android.core.model.FailoverConfig
 import com.singflow.android.core.model.FailoverPreset
 import com.singflow.android.core.model.PerAppMode
@@ -99,6 +100,7 @@ fun SettingsScreen(
     var showCountryPicker by remember { mutableStateOf(false) }
     var showIntervalPicker by remember { mutableStateOf(false) }
     var showAdvancedFailover by remember { mutableStateOf(false) }
+    var showUtlsPicker by remember { mutableStateOf(false) }
     var savedHint by remember { mutableStateOf<String?>(null) }
 
     Column(
@@ -447,6 +449,72 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(18.dp))
 
+        SettingsSection(title = "抗封锁增强") {
+            val anti = settings.antiBlocking
+            SwitchRow(
+                title = "TLS ClientHello 分片",
+                subtitle = "拆分 TLS 握手，降低 SNI 明文阻断与特征识别",
+                checked = anti.tlsFragment,
+                onCheckedChange = { enabled ->
+                    onUpdate(settings.copy(antiBlocking = anti.copy(tlsFragment = enabled)))
+                }
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            val fingerprintLabel = AntiBlockingConfig.UTLS_OPTIONS
+                .firstOrNull { it.first == anti.utlsFingerprint }
+                ?.second
+                ?: anti.utlsFingerprint
+            OutlinedButton(
+                onClick = { showUtlsPicker = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("uTLS 指纹：$fingerprintLabel")
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            SwitchRow(
+                title = "多路复用",
+                subtitle = "VLESS / VMess / Trojan / Shadowsocks 共用连接，降低握手次数",
+                checked = anti.multiplexEnabled,
+                onCheckedChange = { enabled ->
+                    onUpdate(settings.copy(antiBlocking = anti.copy(multiplexEnabled = enabled)))
+                }
+            )
+            if (anti.multiplexEnabled) {
+                Spacer(modifier = Modifier.height(6.dp))
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    AntiBlockingConfig.MULTIPLEX_PROTOCOLS.forEachIndexed { index, protocol ->
+                        SegmentedButton(
+                            selected = anti.multiplexProtocol == protocol,
+                            onClick = {
+                                onUpdate(
+                                    settings.copy(
+                                        antiBlocking = anti.copy(multiplexProtocol = protocol)
+                                    )
+                                )
+                            },
+                            shape = SegmentedButtonDefaults.itemShape(
+                                index = index,
+                                count = AntiBlockingConfig.MULTIPLEX_PROTOCOLS.size
+                            )
+                        ) {
+                            Text(protocol)
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                SwitchRow(
+                    title = "复用帧填充",
+                    subtitle = "对复用帧做随机填充，缓解长度特征识别（增加少量流量）",
+                    checked = anti.multiplexPadding,
+                    onCheckedChange = { enabled ->
+                        onUpdate(settings.copy(antiBlocking = anti.copy(multiplexPadding = enabled)))
+                    }
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(18.dp))
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -597,6 +665,38 @@ fun SettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showIntervalPicker = false }) {
+                    Text("关闭")
+                }
+            }
+        )
+    }
+
+    if (showUtlsPicker) {
+        AlertDialog(
+            onDismissRequest = { showUtlsPicker = false },
+            title = { Text("uTLS 指纹") },
+            text = {
+                LazyColumn(modifier = Modifier.heightIn(max = 420.dp)) {
+                    items(AntiBlockingConfig.UTLS_OPTIONS, key = { it.first.ifBlank { "default" } }) { option ->
+                        CountryOptionRow(
+                            label = option.second,
+                            selected = settings.antiBlocking.utlsFingerprint == option.first,
+                            onClick = {
+                                onUpdate(
+                                    settings.copy(
+                                        antiBlocking = settings.antiBlocking.copy(
+                                            utlsFingerprint = option.first
+                                        )
+                                    )
+                                )
+                                showUtlsPicker = false
+                            }
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showUtlsPicker = false }) {
                     Text("关闭")
                 }
             }

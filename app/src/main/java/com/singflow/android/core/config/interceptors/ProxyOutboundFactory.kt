@@ -1,5 +1,6 @@
 package com.singflow.android.core.config.interceptors
 
+import com.singflow.android.core.model.AntiBlockingConfig
 import com.singflow.android.core.model.ProtocolType
 import com.singflow.android.core.model.ProxyNode
 import kotlinx.serialization.json.Json
@@ -22,7 +23,12 @@ object ProxyOutboundFactory {
     /**
      * 构造标准代理 outbound；CUSTOM_JSON 会先合并原始 JSON 再覆盖 tag 与 domain_resolver。
      */
-    fun buildProxyOutbound(node: ProxyNode, tag: String, resolver: JsonObject): JsonObject {
+    fun buildProxyOutbound(
+        node: ProxyNode,
+        tag: String,
+        resolver: JsonObject,
+        antiBlocking: AntiBlockingConfig = AntiBlockingConfig.DEFAULT
+    ): JsonObject {
         if (node.protocol == ProtocolType.CUSTOM_JSON && node.rawOutboundJson.isNotBlank()) {
             val raw = runCatching {
                 Json.parseToJsonElement(node.rawOutboundJson).jsonObject
@@ -89,15 +95,34 @@ object ProxyOutboundFactory {
                 ProtocolType.WIREGUARD, ProtocolType.CUSTOM_JSON -> Unit
             }
 
-            buildTls(node)?.let { put("tls", it) }
+            buildTls(node, antiBlocking)?.let { put("tls", it) }
             buildTransport(node)?.let { put("transport", it) }
+            if (antiBlocking.multiplexEnabled && supportsMultiplex(node.protocol)) {
+                putJsonObject("multiplex") {
+                    put("enabled", true)
+                    put("protocol", antiBlocking.multiplexProtocol)
+                    put("max_streams", antiBlocking.multiplexMaxStreams.coerceIn(1, 128))
+                    put("padding", antiBlocking.multiplexPadding)
+                }
+            }
         }
+    }
+
+    /**
+     * 多路复用仅对基于 TCP 的代理协议生效；QUIC 协议自身已有连接复用。
+     */
+    private fun supportsMultiplex(protocol: ProtocolType): Boolean = when (protocol) {
+        ProtocolType.VLESS, ProtocolType.VMESS, ProtocolType.TROJAN, ProtocolType.SHADOWSOCKS -> true
+        else -> false
     }
 
     /**
      * 构造 TLS / REALITY 段。
      */
-    fun buildTls(node: ProxyNode): JsonObject? {
+    fun buildTls(
+        node: ProxyNode,
+        antiBlocking: AntiBlockingConfig = AntiBlockingConfig.DEFAULT
+    ): JsonObject? {
         val forceTls = node.protocol == ProtocolType.HYSTERIA2 ||
             node.protocol == ProtocolType.TUIC ||
             node.protocol == ProtocolType.TROJAN
@@ -114,11 +139,17 @@ object ProxyOutboundFactory {
             if (tls.alpn.isNotEmpty()) {
                 putJsonArray("alpn") { tls.alpn.forEach { add(JsonPrimitive(it)) } }
             }
-            if (tls.utlsFingerprint.isNotBlank()) {
+            val fingerprint = antiBlocking.utlsFingerprint.ifBlank { tls.utlsFingerprint }
+            if (fingerprint.isNotBlank()) {
                 putJsonObject("utls") {
                     put("enabled", true)
-                    put("fingerprint", tls.utlsFingerprint)
+                    put("fingerprint", fingerprint)
                 }
+            }
+            if (antiBlocking.tlsFragment) {
+                put("fragment", true)
+                put("record_fragment", true)
+                put("fragment_fallback_delay", "500ms")
             }
             if (tls.realityEnabled) {
                 putJsonObject("reality") {

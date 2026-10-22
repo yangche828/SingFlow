@@ -463,3 +463,33 @@ restore=恢复完成：6 个节点、1 个订阅、1 条应用规则，请重新
 2. WebDAV 备份（可选）与备份加密。
 3. 订阅增删节点对比测试与 Worker 重试策略细化。
 4. 节点分组拖拽排序、批量删除与导出选中节点。
+
+### R9：TLS 分片、uTLS 指纹与多路复用（已完成）
+
+| 模块 | 交付内容 | 验证 |
+| :--- | :--- | :--- |
+| 数据模型 | `AntiBlockingConfig`：`tlsFragment`、`utlsFingerprint`、`multiplexEnabled`、`multiplexProtocol`、`multiplexPadding`、`multiplexMaxStreams`，并入 `AppSettings` | 序列化持久化 |
+| 配置生成 | `ProxyOutboundFactory`：TLS 节点输出 `fragment/record_fragment/fragment_fallback_delay`；全局指纹覆盖节点指纹；VLESS/VMess/Trojan/SS 输出 `multiplex`，QUIC 协议跳过 | 3 个单测 |
+| 设置 UI | 「抗封锁增强」卡片：TLS 分片开关、uTLS 指纹选择器、多路复用开关、h2mux/smux/yamux 选择、mux padding 开关 | 截图 |
+| 兼容性 | 多路复用需服务端支持；默认关闭，避免普通节点被误伤 | 运行验证 |
+
+**运行时验收**：
+
+```text
+persisted=tlsFragment=true,utlsFingerprint=chrome,multiplexEnabled=true,protocol=h2mux
+config_multiplex=enabled=true protocol=h2mux max_streams=8 padding=false
+mux_enabled_204=000（回环服务器不支持 mux，日志出现 sp.mux.sing-box.arpa:444）
+mux_disabled_config=无 multiplex 字段
+mux_disabled_204=204
+```
+
+说明：回环 VLESS 测试服务器不实现 mux，因此开启 mux 后 204 失败属于预期；关闭后立即恢复 204，证明确实写入并生效。
+
+证据：`acceptance/r9_anti_blocking.png`、`acceptance/r9_anti_blocking_runtime.log`。
+
+### 下一轮（R10）
+
+1. WebDAV 备份与备份加密（可选）。
+2. 订阅增删节点对比测试与 Worker 重试策略细化。
+3. 节点分组拖拽排序、批量删除与导出选中节点。
+4. 节点真实出口 GeoIP 批量探测与自动命名。

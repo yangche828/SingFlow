@@ -1,0 +1,7 @@
+== R9 抗封锁增强验收 ==
+persisted=tlsFragment=true,utlsFingerprint=chrome,multiplexEnabled=true,protocol=h2mux
+config_multiplex=enabled=true protocol=h2mux max_streams=8 padding=false
+mux_enabled_204=000 (loopback server does not support mux; sp.mux.sing-box.arpa:444 seen)
+mux_disabled_config=no multiplex field
+mux_disabled_204=204
+screenshot=acceptance/r9_anti_blocking.png

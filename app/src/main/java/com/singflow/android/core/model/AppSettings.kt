@@ -64,7 +64,8 @@ data class AppSettings(
     val selectedNodeId: String = "",
     val fakeIpEnabled: Boolean = false,
     val countryRoutingEnabled: Boolean = false,
-    val failover: FailoverConfig = FailoverConfig.DEFAULT
+    val failover: FailoverConfig = FailoverConfig.DEFAULT,
+    val antiBlocking: AntiBlockingConfig = AntiBlockingConfig.DEFAULT
 ) {
     companion object {
         val DEFAULT = AppSettings()

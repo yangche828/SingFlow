@@ -49,7 +49,12 @@ class OutboundNodeInterceptor : ConfigInterceptor {
             return
         }
 
-        val proxy = ProxyOutboundFactory.buildProxyOutbound(node, context.proxyTag, resolver)
+        val proxy = ProxyOutboundFactory.buildProxyOutbound(
+            node,
+            context.proxyTag,
+            resolver,
+            context.settings.antiBlocking
+        )
         context.outbounds = buildJsonArray {
             add(proxy)
             add(
