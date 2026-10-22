@@ -385,7 +385,15 @@ fun NodeDetailScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { selectedConnection = null }) { Text("关闭") }
+                Row {
+                    TextButton(
+                        onClick = {
+                            clipboard.setText(AnnotatedString(connection.host))
+                            selectedConnection = null
+                        }
+                    ) { Text("复制域名") }
+                    TextButton(onClick = { selectedConnection = null }) { Text("关闭") }
+                }
             }
         )
     }

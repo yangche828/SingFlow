@@ -274,7 +274,12 @@ fun SingFlowRoot(viewModel: MainViewModel) {
                     vpnState = vpnState,
                     selectedNode = selectedNode,
                     onBack = { navController.popBackStack() },
-                    allNodes = nodes
+                    allNodes = nodes,
+                    onOpenNodeDetail = { node ->
+                        navController.navigate("node-detail/${node.id}") {
+                            launchSingleTop = true
+                        }
+                    }
                 )
             }
             composable("export-backup") {

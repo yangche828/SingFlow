@@ -1,0 +1,5 @@
+== R27 诊断异常节点跳转与连接复制验收 ==
+entry=诊断 → 异常/熔断节点 → 点击“日本 东京”
+result=进入节点详情页（标题“节点详情”）
+connection_dialog=新增“复制域名”按钮，复制后关闭弹窗
+screenshot=acceptance/r27_problem_to_detail.png

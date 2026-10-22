@@ -1,5 +1,6 @@
 package com.singflow.android.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -57,6 +58,7 @@ fun DiagnosticsScreen(
     selectedNode: ProxyNode?,
     onBack: () -> Unit,
     allNodes: List<ProxyNode> = emptyList(),
+    onOpenNodeDetail: (ProxyNode) -> Unit = {},
     diagnosticsViewModel: DiagnosticsViewModel = hiltViewModel()
 ) {
     val state by diagnosticsViewModel.state.collectAsStateWithLifecycle()
@@ -133,7 +135,7 @@ fun DiagnosticsScreen(
                     Spacer(modifier = Modifier.height(4.dp))
                 }
                 items(problemNodes, key = { "problem-${it.id}" }) { node ->
-                    ProblemNodeRow(node)
+                    ProblemNodeRow(node) { onOpenNodeDetail(node) }
                 }
                 item(key = "problem-nodes-spacer") {
                     Spacer(modifier = Modifier.height(12.dp))
@@ -239,11 +241,12 @@ fun DiagnosticsScreen(
 }
 
 @Composable
-private fun ProblemNodeRow(node: ProxyNode) {
+private fun ProblemNodeRow(node: ProxyNode, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .clickable(onClick = onClick)
+            .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
