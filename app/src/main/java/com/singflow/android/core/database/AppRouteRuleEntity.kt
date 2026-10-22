@@ -2,6 +2,7 @@ package com.singflow.android.core.database
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
 /**
  * 应用级国家分流规则。
@@ -13,6 +14,7 @@ import androidx.room.PrimaryKey
  * @property updatedAtMs 更新时间戳
  */
 @Entity(tableName = "app_route_rules")
+@Serializable
 data class AppRouteRuleEntity(
     @PrimaryKey val packageName: String,
     val appName: String,

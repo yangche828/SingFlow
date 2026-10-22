@@ -2,6 +2,7 @@ package com.singflow.android.core.database
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
 /**
  * 订阅实体（为 Phase 7 订阅自动更新预留）。
@@ -18,6 +19,7 @@ import androidx.room.PrimaryKey
  * @property enabled 是否启用
  */
 @Entity(tableName = "subscriptions")
+@Serializable
 data class SubscriptionEntity(
     @PrimaryKey val id: String,
     val name: String,

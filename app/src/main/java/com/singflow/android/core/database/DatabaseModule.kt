@@ -106,6 +106,25 @@ object DatabaseModule {
         )
     }
 
+    /** 备份管理器。 */
+    @Provides
+    @Singleton
+    fun provideBackupManager(
+        nodeRepository: NodeRepository,
+        subscriptionDao: SubscriptionDao,
+        appRouteRuleRepository: AppRouteRuleRepository,
+        preferencesManager: PreferencesManager,
+        json: Json
+    ): com.singflow.android.core.backup.BackupManager {
+        return com.singflow.android.core.backup.BackupManager(
+            nodeRepository = nodeRepository,
+            subscriptionDao = subscriptionDao,
+            appRuleRepository = appRouteRuleRepository,
+            preferencesManager = preferencesManager,
+            json = json
+        )
+    }
+
     /** 共享 OkHttp 客户端（测速 / Clash API）。 */
     @Provides
     @Singleton

@@ -433,3 +433,33 @@ UI=代理组（12）/ 活跃连接 / 累计流量
 2. 配置/节点/订阅备份与恢复（本地文件 + WebDAV 可选）。
 3. 抗封锁增强：TLS fragment、uTLS 指纹、多路复用 padding 配置项。
 4. 订阅增删节点对比测试与 Worker 重试策略细化。
+
+### R8：节点二维码导出与本地备份恢复（已完成）
+
+| 模块 | 交付内容 | 验证 |
+| :--- | :--- | :--- |
+| 二维码 | 接入 ZXing `core`，`QrCodeGenerator` 将分享链接编码为 640px 二维码；当前节点展示二维码 | API 33 截图可扫 |
+| 分享 | 当前节点/全部节点链接的复制与系统分享（`ACTION_SEND`），批量链接按 `rawShareUri` 去重 | 6 条链接 |
+| 备份格式 | `BackupBundle`：版本、导出时间、完整设置、节点（`ProxyNode` 序列化）、订阅、应用分流规则 | JSON 9,548 B |
+| 导出/恢复 | 通过 SAF `CreateDocument` / `OpenDocument` 选择本地 JSON；恢复采用合并语义，不清空现有数据，设置整体覆盖 | 恢复提示成功 |
+| 入口 | 设置页「导出与备份（节点二维码 / JSON）」 | 截图 |
+| 约束 | 非分享链接导入的节点无法生成二维码，界面明确提示 | 运行 |
+
+**运行时验收**：
+
+```text
+backup_size=9548 bytes
+version=1 nodes=6 subscriptions=1 appRules=1 countryRouting=True
+qr=当前节点 JP-SUB-B 二维码生成成功
+restore=恢复完成：6 个节点、1 个订阅、1 条应用规则，请重新连接
+```
+
+证据：`acceptance/r8_export_qr.png`、`acceptance/r8_backup_restore.png`、
+`acceptance/r8_export_backup_runtime.log`。
+
+### 下一轮（R9）
+
+1. 抗封锁增强：TLS fragment、uTLS 指纹、多路复用 padding 配置项与设置页开关。
+2. WebDAV 备份（可选）与备份加密。
+3. 订阅增删节点对比测试与 Worker 重试策略细化。
+4. 节点分组拖拽排序、批量删除与导出选中节点。

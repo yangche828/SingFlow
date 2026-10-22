@@ -1,0 +1,6 @@
+== R8 导出/备份验收 2026-10-23T02:57:56.9337168+08:00 ==
+backup_size=9548 bytes
+version=1 nodes=6 subscriptions=1 appRules=1 countryRouting=True
+qr=当前节点 JP-SUB-B 二维码生成成功
+restore=恢复完成：6 个节点、1 个订阅、1 条应用规则，请重新连接
+screenshots=acceptance/r8_export_qr.png, acceptance/r8_backup_restore.png

@@ -35,6 +35,7 @@ import com.singflow.android.ui.components.ImportBottomSheet
 import com.singflow.android.ui.screens.AppRoutingScreen
 import com.singflow.android.ui.screens.DashboardScreen
 import com.singflow.android.ui.screens.DiagnosticsScreen
+import com.singflow.android.ui.screens.ExportBackupScreen
 import com.singflow.android.ui.screens.LogsScreen
 import com.singflow.android.ui.screens.NodesScreen
 import com.singflow.android.ui.screens.SettingsScreen
@@ -195,6 +196,11 @@ fun SingFlowRoot(viewModel: MainViewModel) {
                             launchSingleTop = true
                         }
                     },
+                    onOpenExportBackup = {
+                        navController.navigate("export-backup") {
+                            launchSingleTop = true
+                        }
+                    },
                     onUpdate = { updated -> viewModel.updateSettings { updated } }
                 )
             }
@@ -224,6 +230,13 @@ fun SingFlowRoot(viewModel: MainViewModel) {
             composable("diagnostics") {
                 DiagnosticsScreen(
                     vpnState = vpnState,
+                    selectedNode = selectedNode,
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable("export-backup") {
+                ExportBackupScreen(
+                    nodes = nodes,
                     selectedNode = selectedNode,
                     onBack = { navController.popBackStack() }
                 )

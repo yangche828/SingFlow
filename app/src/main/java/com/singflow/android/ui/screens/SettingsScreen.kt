@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Apps
+import androidx.compose.material.icons.rounded.FileUpload
 import androidx.compose.material.icons.rounded.MonitorHeart
 import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material3.AlertDialog
@@ -75,6 +76,7 @@ import kotlinx.coroutines.withContext
  * @param onOpenAppRouting 打开应用级国家分流页面
  * @param onOpenSubscriptions 打开订阅管理页面
  * @param onOpenDiagnostics 打开连接诊断页面
+ * @param onOpenExportBackup 打开导出与备份页面
  * @param onUpdate 保存设置
  */
 @Composable
@@ -86,6 +88,7 @@ fun SettingsScreen(
     onOpenAppRouting: () -> Unit = {},
     onOpenSubscriptions: () -> Unit = {},
     onOpenDiagnostics: () -> Unit = {},
+    onOpenExportBackup: () -> Unit = {},
     onUpdate: (AppSettings) -> Unit
 ) {
     var remoteDns by remember(settings.remoteDns) { mutableStateOf(settings.remoteDns) }
@@ -241,6 +244,15 @@ fun SettingsScreen(
                 Icon(Icons.Rounded.MonitorHeart, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("连接诊断（Selector / 活跃连接）")
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            OutlinedButton(
+                onClick = onOpenExportBackup,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Rounded.FileUpload, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("导出与备份（节点二维码 / JSON）")
             }
             Spacer(modifier = Modifier.height(6.dp))
             Text(
