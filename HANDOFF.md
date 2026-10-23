@@ -1,5 +1,7 @@
 # HANDOFF — SingFlow 原生内核联调收尾
 
+> **2026-10-23 更新：本文件已过期。** 最新状态、完成/未完成清单、测试环境与接手建议见根目录 `HANDOFF_REPORT.md`（对应 HEAD `1e4ac59`，141 tests，release 84.95 MB）。本文件保留作为 v1.0.1 历史记录。
+
 > 生成时间：2026-10-21
 > 更新时间：2026-10-22（追加：release 精简包 80.5 MB，真机 Android 17 / arm64 验收 18/18 全绿）
 > 来源：OpenCode 会话「SingFlow开发」（`ses_eab443d30ffdXWf6WBPExEkRPl`，累计 2.5M input tokens，经历 7 次上下文压缩）
