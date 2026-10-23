@@ -11,7 +11,11 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
+import android.net.ConnectivityManager
 import android.net.IpPrefix
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
@@ -32,6 +36,8 @@ import com.singflow.android.core.database.PreferencesManager
 import com.singflow.android.core.failover.ClashApiOutboundSwitcher
 import com.singflow.android.core.failover.FailoverController
 import com.singflow.android.core.wifi.TrustedWifi
+import com.singflow.android.core.wifi.TrustedWifiAction
+import com.singflow.android.core.wifi.TrustedWifiPolicy
 import com.singflow.android.core.failover.FailoverOutcome
 import com.singflow.android.core.failover.LocalNetworkVerifier
 import com.singflow.android.core.failover.RepositoryNodeStore
@@ -52,6 +58,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import java.net.InetAddress
@@ -101,6 +109,19 @@ class SingFlowVpnService : VpnService() {
     private var currentSettings: AppSettings = AppSettings.DEFAULT
     private var engineMode: String = "IDLE"
 
+    /** 当前是否处于受信任 Wi-Fi 挂起状态（前台服务驻留，隧道已关闭）。 */
+    @Volatile
+    private var parkedForTrustedWifi: Boolean = false
+
+    /** 受信任网络变化监听回调；服务存续期间常驻。 */
+    private var trustedWifiCallback: ConnectivityManager.NetworkCallback? = null
+
+    /** 受信任策略评估任务句柄（防抖用）。 */
+    private var trustedWifiEvaluateJob: Job? = null
+
+    /** 串行化挂起/恢复切换，避免网络抖动引发并发重建隧道。 */
+    private val trustedWifiMutex = Mutex()
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
@@ -109,6 +130,7 @@ class SingFlowVpnService : VpnService() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         return when (intent?.action) {
             ACTION_STOP -> {
+                parkedForTrustedWifi = false
                 shutdown()
                 stopSelf()
                 START_NOT_STICKY
@@ -140,6 +162,7 @@ class SingFlowVpnService : VpnService() {
     }
 
     override fun onDestroy() {
+        unregisterTrustedWifiWatch()
         shutdown()
         scope.cancel()
         super.onDestroy()
@@ -149,6 +172,7 @@ class SingFlowVpnService : VpnService() {
      * 建立隧道并启动内核（原生或诊断回退）。
      */
     private fun startTunnel(intent: Intent?) {
+        parkedForTrustedWifi = false
         val config = intent?.getStringExtra(EXTRA_CONFIG).orEmpty()
         if (config.isBlank()) {
             VpnStateRepository.setError("启动失败：未提供 sing-box 配置")
@@ -164,12 +188,12 @@ class SingFlowVpnService : VpnService() {
         currentSettings = parseSettings(intent?.getStringExtra(EXTRA_SETTINGS))
 
         if (TrustedWifi.isTrusted(applicationContext, currentSettings)) {
-            Log.i(TAG, "当前 Wi-Fi 属于受信任网络，跳过代理启动")
-            VpnStateRepository.setError("当前 Wi-Fi 已标记为受信任，已跳过代理")
-            postTrustedWifiNotification()
-            stopSelf()
+            Log.i(TAG, "当前 Wi-Fi 属于受信任网络，进入前台挂起状态")
+            registerTrustedWifiWatch()
+            enterTrustedPark()
             return
         }
+        registerTrustedWifiWatch()
 
         VpnStateRepository.setStatus(
             status = VpnStatus.CONNECTING,
@@ -634,6 +658,113 @@ class SingFlowVpnService : VpnService() {
     /**
      * 关闭隧道与内核。
      */
+    /**
+     * 受信任 Wi-Fi 挂起：关闭当前隧道与引擎，但保留前台服务驻留；
+     * 由 [evaluateTrustedWifi] 在离开受信任网络后自动调用 [resumeFromTrustedPark] 重建隧道。
+     */
+    private fun enterTrustedPark() {
+        parkedForTrustedWifi = true
+        shutdown()
+        startForegroundCompat(VpnStatus.PARKED)
+        VpnStateRepository.setStatus(
+            status = VpnStatus.PARKED,
+            nodeId = currentNodeId,
+            nodeName = currentNodeName,
+            engineMode = "TRUSTED_WIFI"
+        )
+        VpnStateRepository.addLog("INFO", "当前 Wi-Fi 已标为受信任：代理暂停，离开后自动恢复连接")
+        postTrustedWifiNotification()
+    }
+
+    /**
+     * 离开受信任网络后自动重建隧道（沿用挂起前保存的会话配置）。
+     */
+    private fun resumeFromTrustedPark() {
+        val config = currentConfig
+        if (config.isBlank()) {
+            parkedForTrustedWifi = false
+            unregisterTrustedWifiWatch()
+            VpnStateRepository.setError("受信任网络恢复失败：缺少会话配置")
+            stopSelf()
+            return
+        }
+        VpnStateRepository.addLog("INFO", "已离开受信任 Wi-Fi，自动恢复连接…")
+        val intent = Intent(this, SingFlowVpnService::class.java)
+            .putExtra(EXTRA_CONFIG, config)
+            .putExtra(EXTRA_NODE_ID, currentNodeId)
+            .putExtra(EXTRA_NODE_NAME, currentNodeName)
+            .putExtra(EXTRA_SETTINGS, JsonHolder.json.encodeToString(AppSettings.serializer(), currentSettings))
+        startTunnel(intent)
+    }
+
+    /**
+     * 注册网络变化监听：Wi-Fi ↔ 蜂窝切换、连断触发受信任策略重估。
+     */
+    private fun registerTrustedWifiWatch() {
+        if (trustedWifiCallback != null) return
+        val manager = getSystemService(ConnectivityManager::class.java) ?: return
+        val request = NetworkRequest.Builder()
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .build()
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                evaluateTrustedWifi()
+            }
+
+            override fun onLost(network: Network) {
+                evaluateTrustedWifi()
+            }
+        }
+        runCatching { manager.registerNetworkCallback(request, callback) }
+            .onSuccess { trustedWifiCallback = callback }
+            .onFailure {
+                VpnStateRepository.addLog("WARN", "受信任 Wi-Fi 自动恢复监听注册失败：${it.message}")
+            }
+    }
+
+    /**
+     * 注销网络变化监听（仅在服务销毁时调用）。
+     */
+    private fun unregisterTrustedWifiWatch() {
+        val callback = trustedWifiCallback ?: return
+        trustedWifiCallback = null
+        val manager = getSystemService(ConnectivityManager::class.java) ?: return
+        runCatching { manager.unregisterNetworkCallback(callback) }
+    }
+
+    /**
+     * 重估受信任 Wi-Fi 策略（挂起/恢复决策）。
+     *
+     * 网络切换初期 SSID 可能尚未就绪，先防抖 1.2s 再评估；
+     * 评估在互斥锁内串行执行，避免抖动触发并发重建隧道。
+     */
+    private fun evaluateTrustedWifi() {
+        trustedWifiEvaluateJob?.cancel()
+        trustedWifiEvaluateJob = scope.launch(Dispatchers.Main) {
+            delay(1200)
+            trustedWifiMutex.withLock {
+                val trusted = TrustedWifi.isTrusted(applicationContext, currentSettings)
+                val status = VpnStateRepository.snapshot().status
+                val tunnelActive = status == VpnStatus.CONNECTED || status == VpnStatus.CONNECTING
+                val action = TrustedWifiPolicy.decide(
+                    tunnelActive = tunnelActive,
+                    parked = parkedForTrustedWifi,
+                    trustedNow = trusted
+                )
+                when (action) {
+                    TrustedWifiAction.PARK -> if (!parkedForTrustedWifi) enterTrustedPark()
+                    TrustedWifiAction.RESUME -> if (parkedForTrustedWifi) {
+                        parkedForTrustedWifi = false
+                        resumeFromTrustedPark()
+                    }
+                    TrustedWifiAction.KEEP_TUNNEL,
+                    TrustedWifiAction.KEEP_PARKED,
+                    TrustedWifiAction.IGNORE -> Unit
+                }
+            }
+        }
+    }
+
     private fun shutdown() {
         if (VpnStateRepository.snapshot().status != VpnStatus.IDLE) {
             VpnStateRepository.setStatus(VpnStatus.STOPPING)
@@ -758,6 +889,7 @@ class SingFlowVpnService : VpnService() {
         val title = when (status) {
             VpnStatus.CONNECTED -> getString(R.string.notification_title_connected)
             VpnStatus.CONNECTING -> getString(R.string.notification_title_connecting)
+            VpnStatus.PARKED -> "SingFlow · 受信任网络"
             VpnStatus.ERROR -> "SingFlow 连接异常"
             else -> "SingFlow"
         }
@@ -770,13 +902,18 @@ class SingFlowVpnService : VpnService() {
                 if (engineMode == "DIAGNOSTIC") append(" · 诊断模式")
             }
             VpnStatus.CONNECTING -> "正在建立安全隧道…"
+            VpnStatus.PARKED -> "代理暂停，离开受信任网络后自动恢复"
             else -> nodeName.ifBlank { "未连接" }
         }
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_singflow_logo)
             .setContentTitle(title)
             .setContentText(text)
-            .setOngoing(status == VpnStatus.CONNECTED || status == VpnStatus.CONNECTING)
+            .setOngoing(
+                status == VpnStatus.CONNECTED ||
+                    status == VpnStatus.CONNECTING ||
+                    status == VpnStatus.PARKED
+            )
             .setOnlyAlertOnce(true)
             .setContentIntent(contentIntent)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)

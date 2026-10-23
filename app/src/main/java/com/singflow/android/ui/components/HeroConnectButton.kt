@@ -168,5 +168,6 @@ private fun statusLabel(status: VpnStatus): String = when (status) {
     VpnStatus.CONNECTING -> "连接中…"
     VpnStatus.CONNECTED -> "已保护"
     VpnStatus.STOPPING -> "断开中…"
+    VpnStatus.PARKED -> "受信任网络"
     VpnStatus.ERROR -> "连接异常"
 }

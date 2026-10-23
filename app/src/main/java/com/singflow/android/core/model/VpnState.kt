@@ -8,6 +8,9 @@ enum class VpnStatus {
     CONNECTING,
     CONNECTED,
     STOPPING,
+
+    /** 受信任 Wi-Fi 挂起：前台服务驻留，隧道暂停，离开受信任网络后自动恢复。 */
+    PARKED,
     ERROR
 }
 
