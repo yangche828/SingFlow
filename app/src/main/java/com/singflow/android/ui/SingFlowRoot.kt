@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import android.net.Uri
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -253,11 +254,13 @@ fun SingFlowRoot(viewModel: MainViewModel) {
                     onUpdate = { updated -> viewModel.updateSettings { updated } }
                 )
             }
-            composable("app-routing") {
+            composable("app-routing?process={process}") { entry ->
+                val process = entry.arguments?.getString("process").orEmpty()
                 AppRoutingScreen(
                     rules = appRouteRules,
                     countries = countries,
                     multiNodeEnabled = settings.countryRoutingEnabled,
+                    preselectProcess = process,
                     onBack = { navController.popBackStack() },
                     onSave = { rule -> viewModel.saveAppRouteRule(context, rule) },
                     onDelete = { packageName -> viewModel.deleteAppRouteRule(context, packageName) }
@@ -296,6 +299,11 @@ fun SingFlowRoot(viewModel: MainViewModel) {
                     },
                     onOpenNodeDetail = { node ->
                         navController.navigate("node-detail/${node.id}") {
+                            launchSingleTop = true
+                        }
+                    },
+                    onOpenAppRouting = { process ->
+                        navController.navigate("app-routing?process=${Uri.encode(process)}") {
                             launchSingleTop = true
                         }
                     }

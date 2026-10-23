@@ -3,7 +3,9 @@ package com.singflow.android.ui.screens
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import android.widget.Toast
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -72,6 +74,7 @@ fun DiagnosticsScreen(
     subscriptions: List<com.singflow.android.ui.SubscriptionReport> = emptyList(),
     onOpenSubscriptions: () -> Unit = {},
     onOpenNodeDetail: (ProxyNode) -> Unit = {},
+    onOpenAppRouting: (String) -> Unit = {},
     diagnosticsViewModel: DiagnosticsViewModel = hiltViewModel()
 ) {
     val state by diagnosticsViewModel.state.collectAsStateWithLifecycle()
@@ -287,6 +290,11 @@ fun DiagnosticsScreen(
                 item(key = "connections-header") {
                     Spacer(modifier = Modifier.height(14.dp))
                     SectionTitle("活跃连接（${state.traffic?.connections?.size ?: 0}）")
+                    Text(
+                        text = "长按连接项可为该应用设置国家分流",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
                 val connections = state.traffic?.connections.orEmpty()
                 if (connections.isEmpty()) {
@@ -300,7 +308,10 @@ fun DiagnosticsScreen(
                     }
                 } else {
                     items(connections, key = { it.id.ifBlank { "${it.host}-${it.destination}-${it.upload}" } }) { connection ->
-                        ConnectionRow(connection)
+                        ConnectionRow(
+                            connection = connection,
+                            onLongPress = onOpenAppRouting
+                        )
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
                     }
                 }
@@ -543,11 +554,23 @@ private fun GroupRow(group: ClashProxyGroup) {    Row(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ConnectionRow(connection: ClashConnection) {
+private fun ConnectionRow(
+    connection: ClashConnection,
+    onLongPress: (String) -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .combinedClickable(
+                onClick = {},
+                onLongClick = {
+                    if (connection.processName.isNotBlank()) {
+                        onLongPress(connection.processName)
+                    }
+                }
+            )
             .padding(vertical = 7.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {

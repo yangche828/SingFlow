@@ -60,6 +60,8 @@ import java.util.Locale
  * @param onBack 返回
  * @param onSave 保存规则
  * @param onDelete 删除规则（恢复跟随全局）
+ * @param preselectProcess 预选的应用进程/包名（诊断页长按连接跳转而来；
+ *   预填搜索框，且在应用列表命中同名包时自动展开编辑面板）
  */
 @Composable
 fun AppRoutingScreen(
@@ -68,19 +70,28 @@ fun AppRoutingScreen(
     multiNodeEnabled: Boolean,
     onBack: () -> Unit,
     onSave: (AppRouteRuleEntity) -> Unit,
-    onDelete: (String) -> Unit
+    onDelete: (String) -> Unit,
+    preselectProcess: String = ""
 ) {
     val context = LocalContext.current
     val packageManager = context.packageManager
     val ruleByPackage = remember(rules) { rules.associateBy { it.packageName } }
     var apps by remember { mutableStateOf<List<RoutableApp>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
-    var query by remember { mutableStateOf("") }
+    var query by remember { mutableStateOf(preselectProcess.trim()) }
     var editing by remember { mutableStateOf<RoutableApp?>(null) }
 
     LaunchedEffect(Unit) {
         apps = withContext(Dispatchers.IO) { loadRoutableApps(packageManager) }
         loading = false
+    }
+
+    // 从诊断页长按跳转而来：应用列表就绪后自动展开同名应用的编辑面板。
+    LaunchedEffect(apps, preselectProcess) {
+        val target = preselectProcess.trim()
+        if (target.isNotBlank() && editing == null) {
+            apps.firstOrNull { it.packageName == target }?.let { editing = it }
+        }
     }
 
     val filtered = remember(apps, query, ruleByPackage) {
