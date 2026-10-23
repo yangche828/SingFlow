@@ -27,8 +27,8 @@ class SubscriptionUpdateWorker(
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
-        if (runAttemptCount >= MAX_ATTEMPTS) {
-            Log.e(TAG, "subscription worker exceeded $MAX_ATTEMPTS attempts, giving up")
+        if (runAttemptCount >= SubscriptionRetryPolicy.MAX_ATTEMPTS) {
+            Log.e(TAG, "subscription worker exceeded ${SubscriptionRetryPolicy.MAX_ATTEMPTS} attempts, giving up")
             return Result.failure()
         }
         val manager = EntryPointAccessors.fromApplication(
@@ -37,31 +37,32 @@ class SubscriptionUpdateWorker(
         ).subscriptionManager()
         val results = runCatching { manager.refreshAll(onlyAutoUpdate = true) }
             .onFailure { Log.e(TAG, "subscription worker failed (attempt ${runAttemptCount + 1})", it) }
-            .getOrElse { return nextResult() }
+            .getOrElse { null }
+        if (results == null) {
+            return apply(SubscriptionRetryPolicy.decide(runAttemptCount, SubscriptionRunOutcome.THREW))
+        }
         results.forEach { result ->
             Log.i(TAG, "refresh ${result.subscription?.name}: ${result.success} ${result.message}")
         }
-        if (results.isEmpty()) return Result.success()
-        return if (results.any { it.success }) Result.success() else nextResult()
+        val outcome = when {
+            results.isEmpty() -> SubscriptionRunOutcome.EMPTY
+            results.any { it.success } -> SubscriptionRunOutcome.ANY_SUCCESS
+            else -> SubscriptionRunOutcome.ALL_FAILED
+        }
+        return apply(SubscriptionRetryPolicy.decide(runAttemptCount, outcome))
     }
 
-    /**
-     * 失败时指数退避重试；达到最大次数后返回 failure，避免无限重试耗电。
-     */
-    private fun nextResult(): Result {
-        return if (runAttemptCount + 1 >= MAX_ATTEMPTS) {
-            Log.e(TAG, "subscription worker giving up after ${runAttemptCount + 1} attempts")
+    private fun apply(action: SubscriptionWorkerAction): Result = when (action) {
+        SubscriptionWorkerAction.SUCCESS -> Result.success()
+        SubscriptionWorkerAction.RETRY -> Result.retry()
+        SubscriptionWorkerAction.FAILURE -> {
+            Log.e(TAG, "subscription worker gave up after ${runAttemptCount + 1} attempts")
             Result.failure()
-        } else {
-            Result.retry()
         }
     }
 
     private companion object {
         private const val TAG = "SubscriptionWorker"
-
-        /** 最大尝试次数（含首次）。 */
-        private const val MAX_ATTEMPTS = 5
     }
 }
 

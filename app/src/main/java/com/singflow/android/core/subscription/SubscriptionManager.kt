@@ -1,6 +1,5 @@
 package com.singflow.android.core.subscription
 
-import com.singflow.android.core.database.NodeRepository
 import com.singflow.android.core.database.SubscriptionDao
 import com.singflow.android.core.database.SubscriptionEntity
 import com.singflow.android.core.parser.UniversalImportManager
@@ -34,13 +33,13 @@ data class SubscriptionRefreshResult(
  * 订阅内容支持：多行分享链接、整段 Base64 订阅、sing-box JSON。
  *
  * @param dao 订阅 DAO
- * @param nodeRepository 节点仓库
+ * @param nodeStore 节点存储（生产环境为 Room 的 NodeRepository）
  * @param importManager 通用导入解析器
  * @param client 共享 OkHttp 客户端
  */
 class SubscriptionManager(
     private val dao: SubscriptionDao,
-    private val nodeRepository: NodeRepository,
+    private val nodeStore: SubscriptionNodeStore,
     private val importManager: UniversalImportManager,
     private val client: OkHttpClient
 ) {
@@ -98,12 +97,12 @@ class SubscriptionManager(
                 )
             }
 
-            val existing = nodeRepository.getByGroup(entity.id)
+            val existing = nodeStore.getByGroup(entity.id)
             val diff = SubscriptionNodeDiffCalculator.diff(existing, parsed.nodes)
             if (diff.removed.isNotEmpty()) {
-                nodeRepository.deleteAll(diff.removed.map { it.id })
+                nodeStore.deleteAll(diff.removed.map { it.id })
             }
-            nodeRepository.saveAllPreservingStats(parsed.nodes)
+            nodeStore.saveAllPreservingStats(parsed.nodes)
 
             val now = System.currentTimeMillis()
             val updated = entity.copy(
@@ -148,9 +147,9 @@ class SubscriptionManager(
      * 删除订阅及其全部节点。
      */
     suspend fun delete(id: String) {
-        val nodes = nodeRepository.getByGroup(id)
+        val nodes = nodeStore.getByGroup(id)
         if (nodes.isNotEmpty()) {
-            nodeRepository.deleteAll(nodes.map { it.id })
+            nodeStore.deleteAll(nodes.map { it.id })
         }
         dao.deleteById(id)
     }

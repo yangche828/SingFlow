@@ -3,6 +3,7 @@ package com.singflow.android.core.database
 import com.singflow.android.core.model.ProxyNode
 import com.singflow.android.core.model.TlsConfig
 import com.singflow.android.core.model.TransportConfig
+import com.singflow.android.core.subscription.SubscriptionNodeStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
@@ -19,7 +20,7 @@ import kotlinx.serialization.json.Json
 class NodeRepository(
     private val nodeDao: NodeDao,
     private val json: Json
-) {
+) : SubscriptionNodeStore {
     /** 观察全部节点（收藏与健康度优先）。 */
     fun observeNodes(): Flow<List<ProxyNode>> = nodeDao.observeAll().map { list -> list.map { it.toDomainSafe() } }
 
@@ -40,7 +41,7 @@ class NodeRepository(
         nodeDao.getByCountry(countryCode).map { it.toDomainSafe() }
 
     /** 读取某个订阅/分组下的节点。 */
-    suspend fun getByGroup(groupId: String): List<ProxyNode> =
+    override suspend fun getByGroup(groupId: String): List<ProxyNode> =
         nodeDao.getByGroup(groupId).map { it.toDomainSafe() }
 
     /** 写入实测出口 IP 与国家。 */
@@ -72,7 +73,7 @@ class NodeRepository(
      * 用于订阅刷新：同一连接指纹的节点只更新配置与展示名，
      * 不覆盖收藏、累计流量、探活次数与实测国家。
      */
-    suspend fun saveAllPreservingStats(nodes: List<ProxyNode>): Int {
+    override suspend fun saveAllPreservingStats(nodes: List<ProxyNode>): Int {
         if (nodes.isEmpty()) return 0
         var written = 0
         for (node in nodes) {
@@ -120,7 +121,7 @@ class NodeRepository(
     }
 
     /** 批量删除节点。 */
-    suspend fun deleteAll(ids: List<String>) {
+    override suspend fun deleteAll(ids: List<String>) {
         if (ids.isEmpty()) return
         nodeDao.deleteByIds(ids)
     }

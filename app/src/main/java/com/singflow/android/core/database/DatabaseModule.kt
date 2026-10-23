@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.singflow.android.core.config.SingBoxConfigPipeline
 import com.singflow.android.core.parser.UniversalImportManager
+import com.singflow.android.core.subscription.SubscriptionNodeStore
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -68,6 +69,13 @@ object DatabaseModule {
         return NodeRepository(nodeDao, json)
     }
 
+    /** 订阅节点存储抽象：由 [NodeRepository] 单例直接提供。 */
+    @Provides
+    @Singleton
+    fun provideSubscriptionNodeStore(
+        nodeRepository: NodeRepository
+    ): com.singflow.android.core.subscription.SubscriptionNodeStore = nodeRepository
+
     /** 应用级国家分流规则仓库。 */
     @Provides
     @Singleton
@@ -94,13 +102,13 @@ object DatabaseModule {
     @Singleton
     fun provideSubscriptionManager(
         subscriptionDao: SubscriptionDao,
-        nodeRepository: NodeRepository,
+        nodeStore: SubscriptionNodeStore,
         importManager: UniversalImportManager,
         okHttpClient: OkHttpClient
     ): com.singflow.android.core.subscription.SubscriptionManager {
         return com.singflow.android.core.subscription.SubscriptionManager(
             dao = subscriptionDao,
-            nodeRepository = nodeRepository,
+            nodeStore = nodeStore,
             importManager = importManager,
             client = okHttpClient
         )
