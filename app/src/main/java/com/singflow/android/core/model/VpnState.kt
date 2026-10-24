@@ -47,7 +47,7 @@ data class LogEntry(
  * @property totalDownload 本次会话累计下载字节
  * @property connectedSeconds 已连接秒数
  * @property engineMode NATIVE / DIAGNOSTIC
- * @property errorMessage 错误信息
+ * @property errorMessage 错误信息；诊断模式下同时承载内核启动失败的真实原因
  * @property logs 最近日志（最多 400 条）
  */
 data class VpnState(

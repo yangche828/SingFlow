@@ -153,7 +153,7 @@ fun DashboardScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "TUN 诊断模式：内核未加载（缺少 libbox.aar），配置已完整生成，流量不转发。",
+                        text = "TUN 诊断模式：${state.errorMessage.ifBlank { "内核未加载" }}，流量不转发。",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface
                     )

@@ -40,6 +40,12 @@ class LibboxBridge(
         runCatching { Class.forName(LIBBOX) }.isSuccess
     }
 
+    /**
+     * 最近一次启动失败的简短原因（如 `Universe$proxyerror: ... timeout`），
+     * 成功启动后置空；供诊断横幅展示真实原因，避免误报"缺少 libbox.aar"。
+     */
+    var lastStartError: String? = null
+        private set
     private var commandServer: Any? = null
     private var started: Boolean = false
     private var setupDone: Boolean = false
@@ -76,11 +82,35 @@ class LibboxBridge(
         protectFd: (Int) -> Boolean
     ): Boolean {
         if (!isNativeAvailable) {
+            lastStartError = "未检测到 libbox.aar"
             logSink("未检测到 libbox.aar，跳过原生内核启动")
             return false
         }
         tunOpener = openTun
         fdProtector = protectFd
+
+        if (startOnce(configJson, baseDir, workingDir, tempDir)) return true
+
+        // cache.db 锁竞争（断开后快速重连时旧实例未释放）：等待后自动重试，避免误降级诊断模式。
+        val error = lastStartError.orEmpty()
+        if ("cache-file" in error || "timeout" in error) {
+            logSink("内核初始化疑似 cache.db 锁竞争，1.5s 后自动重试…")
+            Thread.sleep(1500)
+            if (startOnce(configJson, baseDir, workingDir, tempDir)) return true
+
+            // cache.db 仅缓存 selector 选择与 fakeip 映射，可安全重建；删除后做最终重试。
+            val cacheDb = java.io.File(workingDir, "cache.db")
+            if (cacheDb.exists()) {
+                val deleted = runCatching { cacheDb.delete() }.getOrDefault(false)
+                logSink("重试仍失败，删除缓存库 cache.db（${if (deleted) "成功" else "失败"}）后进行最终重试")
+            }
+            if (startOnce(configJson, baseDir, workingDir, tempDir)) return true
+        }
+        return false
+    }
+
+    /** 单次启动内核，失败时记录原因并回收资源。 */
+    private fun startOnce(configJson: String, baseDir: String, workingDir: String, tempDir: String): Boolean {
         return runCatching {
             val libbox = Class.forName(LIBBOX)
             setupIfNeeded(libbox, baseDir, workingDir, tempDir)
@@ -115,11 +145,17 @@ class LibboxBridge(
 
             commandServer = server
             started = true
+            // 重试成功时清空上一次尝试的失败原因，避免诊断横幅继续展示已恢复的错误。
+            lastStartError = null
             logSink("sing-box 内核已启动: ${version()}")
             true
         }.getOrElse { throwable ->
             val cause = unwrap(throwable)
-            logSink("libbox 启动失败: ${cause.javaClass.simpleName}: ${cause.message}")
+            // 错误原文可能很长（整份配置 decode 失败会回显字段路径），横幅只展示前 200 字。
+            lastStartError = "${cause.javaClass.simpleName}: ${cause.message.orEmpty()}"
+                .trim()
+                .take(MAX_ERROR_LENGTH)
+            logSink("libbox 启动失败: $lastStartError")
             Log.w(TAG, "libbox start failed", cause)
             stop()
             false
@@ -586,6 +622,9 @@ class LibboxBridge(
 
     private companion object {
         private const val TAG = "LibboxBridge"
+
+        /** 诊断横幅展示的失败原因最大长度。 */
+        private const val MAX_ERROR_LENGTH = 200
 
         const val LIBBOX = "io.nekohasekai.libbox.Libbox"
         const val COMMAND_SERVER = "io.nekohasekai.libbox.CommandServer"

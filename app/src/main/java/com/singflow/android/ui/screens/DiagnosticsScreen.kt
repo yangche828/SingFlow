@@ -496,7 +496,7 @@ private fun StatusCard(vpnState: VpnState, selectedNode: ProxyNode?) {
             if (vpnState.isDiagnosticMode) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "诊断模式：内核未加载，流量不转发",
+                    text = "诊断模式：${vpnState.errorMessage.ifBlank { "内核未加载" }}，流量不转发",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error
                 )

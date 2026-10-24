@@ -233,7 +233,10 @@ class SingFlowVpnService : VpnService() {
                     stopSelf()
                     return@launch
                 }
-                VpnStateRepository.addLog("WARN", "未加载可用的 libbox 内核，当前为 TUN 诊断模式（不转发流量）")
+                VpnStateRepository.addLog(
+                    "WARN",
+                    "未加载可用的 libbox 内核（${libbox.lastStartError ?: "libbox.aar 未加载"}），当前为 TUN 诊断模式（不转发流量）"
+                )
                 VpnStateRepository.addLog("INFO", "已建立系统 TUN 网卡，sing-box 配置如下：")
                 config.lines().forEach { line ->
                     if (line.isNotBlank()) VpnStateRepository.addLog("DEBUG", line)
@@ -251,7 +254,12 @@ class SingFlowVpnService : VpnService() {
                 status = VpnStatus.CONNECTED,
                 nodeId = currentNodeId,
                 nodeName = currentNodeName,
-                engineMode = engineMode
+                engineMode = engineMode,
+                errorMessage = if (engineMode == "DIAGNOSTIC") {
+                    libbox.lastStartError ?: "libbox.aar 未加载"
+                } else {
+                    ""
+                }
             )
             updateNotification()
             startFailoverLoop()
@@ -287,13 +295,21 @@ class SingFlowVpnService : VpnService() {
             )
             engineMode = if (started) "NATIVE" else "DIAGNOSTIC"
             if (engineMode == "DIAGNOSTIC") {
-                VpnStateRepository.addLog("WARN", "诊断模式：配置已更新，未加载转发内核")
+                VpnStateRepository.addLog(
+                    "WARN",
+                    "诊断模式：配置已更新，未加载转发内核（${libbox.lastStartError ?: "libbox.aar 未加载"}）"
+                )
             }
             VpnStateRepository.setStatus(
                 status = VpnStatus.CONNECTED,
                 nodeId = currentNodeId,
                 nodeName = currentNodeName,
-                engineMode = engineMode
+                engineMode = engineMode,
+                errorMessage = if (engineMode == "DIAGNOSTIC") {
+                    libbox.lastStartError ?: "libbox.aar 未加载"
+                } else {
+                    ""
+                }
             )
             updateNotification()
             startFailoverLoop()

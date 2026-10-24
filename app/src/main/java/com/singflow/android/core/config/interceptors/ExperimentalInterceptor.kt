@@ -21,6 +21,11 @@ class ExperimentalInterceptor : ConfigInterceptor {
                 put("enabled", true)
                 put("path", "cache.db")
                 put("store_dns", true)
+                // 注意：本仓库 libbox.aar（sing-box 1.14.3）的 cache_file 不识别
+                // `store_selected`，写入会导致高级选项校验失败、内核启动被拒
+                // （decode config: unknown field "store_selected"）并降级为诊断模式。
+                // 当前节点以 DataStore selectedNode 为准，内核启动后的 selector 由
+                // Clash API 复位，故不依赖该字段。
                 if (context.settings.fakeIpEnabled) {
                     put("store_fakeip", true)
                 }

@@ -97,7 +97,15 @@ object ProxyOutboundFactory {
 
             buildTls(node, antiBlocking)?.let { put("tls", it) }
             buildTransport(node)?.let { put("transport", it) }
-            if (antiBlocking.multiplexEnabled && supportsMultiplex(node.protocol)) {
+            // vision 流控要求独占连接，与多路复用互斥；REALITY 握手 ClientHello 已加密，
+            // 分片无对象。两者在 reality 节点上必须跳过，否则连接建立即被服务端断开。
+            // WS/gRPC/HTTPUpgrade 等传输本身已在单条连接上复用，再叠加 sing-box 私有
+            // h2mux/smux 会被仅支持 Xray mux.cool（或 Cloudflare Worker）的服务端直接断开，
+            // 表现为 `connection download closed: http2 ... ClientConn.Close`。
+            val muxCompatible = !node.tls.realityEnabled &&
+                node.flow.isBlank() &&
+                node.transport.isDefaultTcp
+            if (antiBlocking.multiplexEnabled && muxCompatible && supportsMultiplex(node.protocol)) {
                 putJsonObject("multiplex") {
                     put("enabled", true)
                     put("protocol", antiBlocking.multiplexProtocol)
@@ -146,7 +154,9 @@ object ProxyOutboundFactory {
                     put("fingerprint", fingerprint)
                 }
             }
-            if (antiBlocking.tlsFragment) {
+            // REALITY 握手 ClientHello 已加密，分片无对象；ECH 需保持 ClientHello 完整，
+            // 分片会破坏加密握手。两者均跳过 fragment。
+            if (antiBlocking.tlsFragment && !tls.realityEnabled && !tls.echEnabled) {
                 put("fragment", true)
                 put("record_fragment", true)
                 put("fragment_fallback_delay", "500ms")
@@ -156,6 +166,14 @@ object ProxyOutboundFactory {
                     put("enabled", true)
                     put("public_key", tls.realityPublicKey)
                     put("short_id", tls.realityShortId)
+                }
+            }
+            // ECH：外层 SNI 由 sing-box 自动取 server_name，inner SNI 加密传输，
+            // 对抗按 SNI 字符串的阻断。PEM 为空时不生成（降级明文 SNI）。
+            if (tls.echEnabled && tls.echConfigPem.isNotBlank()) {
+                putJsonObject("ech") {
+                    put("enabled", true)
+                    put("config", tls.echConfigPem)
                 }
             }
         }
