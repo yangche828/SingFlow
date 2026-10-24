@@ -20,6 +20,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * 一次导入的结果。
@@ -27,11 +28,13 @@ import java.util.Locale
  * @property nodes 成功解析的节点（已去重）
  * @property errors 解析失败的行与原因
  * @property sourceType 识别出的来源类型：TEXT / BASE64_SUBSCRIPTION / SING_BOX_JSON
+ * @property saved 本次真正新入库的节点数（纯刷新时为 0，此时 [nodes] 为刷新后的全量节点）
  */
 data class ImportResult(
     val nodes: List<ProxyNode> = emptyList(),
     val errors: List<String> = emptyList(),
-    val sourceType: String = "TEXT"
+    val sourceType: String = "TEXT",
+    val saved: Int = nodes.size
 ) {
     val success: Boolean get() = nodes.isNotEmpty()
     val isEmpty: Boolean get() = nodes.isEmpty()
@@ -57,6 +60,14 @@ class UniversalImportManager(
 ) {
 
     /**
+     * ECH 来源域名 → PEM 缓存。空串表示"已查询但失败"，避免同一批导入里
+     * 同源节点反复请求 DoH（订阅常见几十个节点共用 cloudflare-ech.com）。
+     *
+     * 使用 [ConcurrentHashMap] 是因为导入可能从 UI、订阅刷新与后台 Worker 并发触发。
+     */
+    private val echCache = ConcurrentHashMap<String, String>()
+
+    /**
      * 只解析不入库。
      */
     fun parseText(text: String, groupId: String = "manual"): ImportResult {
@@ -78,33 +89,70 @@ class UniversalImportManager(
             val decoded = Base64Utils.safeBase64DecodeOrNull(trimmed)
             if (decoded != null && decoded.contains("://")) {
                 val inner = parseLines(decoded, groupId)
-                return inner.copy(
-                    nodes = inner.nodes.distinctBy { it.dedupKey() },
-                    sourceType = "BASE64_SUBSCRIPTION"
-                )
+                val unique = inner.nodes.distinctBy { it.dedupKey() }
+                return inner.copy(nodes = unique, saved = unique.size, sourceType = "BASE64_SUBSCRIPTION")
             }
         }
 
         // 3) 逐行解析
         val result = parseLines(trimmed, groupId)
-        return result.copy(nodes = result.nodes.distinctBy { it.configHash })
+        val unique = result.nodes.distinctBy { it.configHash }
+        return result.copy(nodes = unique, saved = unique.size)
     }
 
     /**
-     * 解析并入库。
+     * 解析并入库；对携带 ECH 来源域名的节点，入库前经 DoH 解析 ECHConfigList 缓存为 PEM。
      *
-     * @return 入库结果（节点已去重；无仓库时仅返回解析结果）
+     * @return 入库结果（[ImportResult.nodes] 为全量解析结果，[ImportResult.saved] 为本次新增数）
      */
     suspend fun importFromText(text: String, groupId: String = "manual"): ImportResult {
         val result = parseText(text, groupId)
         if (result.nodes.isEmpty() || nodeRepository == null) return result
 
+        val resolved = resolveEchConfigs(result.nodes)
         val existing = nodeRepository.getAll().map { it.configHash }.toMutableSet()
-        val toSave = result.nodes.filter { existing.add(it.configHash) }
+        val toSave = resolved.filter { existing.add(it.configHash) }
         if (toSave.isNotEmpty()) {
             nodeRepository.saveAllPreservingStats(toSave)
         }
-        return result.copy(nodes = toSave)
+        // 存量节点增量补 ECH：链接新解析出 ECH PEM 而库中节点尚无时直接更新，
+        // 让老节点免删除重导即可获得 SNI 阻断对抗能力。
+        resolved.filter { it !in toSave && it.tls.echConfigPem.isNotBlank() }
+            .distinctBy { it.configHash }
+            .forEach { fresh ->
+                val stored = nodeRepository.findByConfigHash(fresh.configHash)
+                if (stored != null && stored.tls.echConfigPem.isBlank()) {
+                    nodeRepository.update(stored.copy(tls = fresh.tls))
+                }
+            }
+        return result.copy(nodes = resolved, saved = toSave.size)
+    }
+
+    /**
+     * 批量补齐 ECH config PEM（订阅刷新与手动导入共用，同源域名只查一次 DoH）。
+     *
+     * 仅处理 `echEnabled` 且尚无 PEM 的节点；解析失败时保持空 PEM，
+     * 由配置层降级为明文 SNI，不阻塞导入。
+     *
+     * @param nodes 待处理的节点
+     * @return 补齐后的节点（顺序与入参一致）
+     */
+    suspend fun resolveEchConfigs(nodes: List<ProxyNode>): List<ProxyNode> = nodes.map { resolveEch(it) }
+
+    /**
+     * 为带 ECH 来源的节点拉取 ECHConfigList；失败时保持 PEM 为空（配置层降级为明文 SNI）。
+     * 相同来源域名的节点共享一次 DoH 查询。
+     */
+    private suspend fun resolveEch(node: ProxyNode): ProxyNode {
+        val tls = node.tls
+        if (!tls.echEnabled || tls.echConfigPem.isNotBlank() || tls.echConfigSource.isBlank()) {
+            return node
+        }
+        val pem = echCache[tls.echConfigSource]
+            ?: EchConfigResolver
+                .resolvePem(tls.echConfigSource, tls.echDohUrl.ifBlank { EchConfigResolver.DEFAULT_DOH })
+                .also { echCache[tls.echConfigSource] = it.orEmpty() }
+        return if (pem.isNullOrBlank()) node else node.copy(tls = tls.copy(echConfigPem = pem))
     }
 
     /**

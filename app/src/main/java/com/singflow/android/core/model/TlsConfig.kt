@@ -14,6 +14,10 @@ import kotlinx.serialization.Serializable
  * @property realityPublicKey REALITY 公钥 (pbk)
  * @property realityShortId REALITY shortId (sid)
  * @property realitySpiderX REALITY spiderX (spx)
+ * @property echEnabled 是否启用 ECH（Encrypted Client Hello，对抗 SNI 阻断）
+ * @property echConfigSource ECH config 来源域名（如 cloudflare-ech.com），导入时经 DoH 解析
+ * @property echDohUrl 解析 ECH config 所用的 DoH 服务地址
+ * @property echConfigPem ECHConfigList（PEM 格式），导入时一次性解析缓存
  */
 @Serializable
 data class TlsConfig(
@@ -25,7 +29,11 @@ data class TlsConfig(
     val realityEnabled: Boolean = false,
     val realityPublicKey: String = "",
     val realityShortId: String = "",
-    val realitySpiderX: String = ""
+    val realitySpiderX: String = "",
+    val echEnabled: Boolean = false,
+    val echConfigSource: String = "",
+    val echDohUrl: String = "",
+    val echConfigPem: String = ""
 ) {
     /** 是否配置了 uTLS 指纹。 */
     val hasUtls: Boolean get() = utlsFingerprint.isNotBlank()

@@ -1,5 +1,7 @@
 package com.singflow.android.core.database
 
+import com.singflow.android.core.model.TlsConfig
+
 /**
  * 订阅刷新时的节点合并策略。
  *
@@ -56,6 +58,28 @@ object NodeMerge {
             } else {
                 incoming.countryNameCn
             }
+        )
+    }
+
+    /**
+     * 刷新时的 TLS/ECH 合并：已有 ECH config 不被本次失败的空结果覆盖。
+     *
+     * 订阅刷新会重做 DoH 查询，若本次失败（PEM 为空）而直接采用新配置，
+     * ECH 会被静默关闭、SNI 重新暴露。链接已不再声明 ech 时尊重新配置。
+     *
+     * @param existing 库中已解码的 TLS 配置，无法解码时传 null
+     * @param incoming 本次解析出的 TLS 配置
+     * @return 应当落库的 TLS 配置
+     */
+    fun preserveEch(existing: TlsConfig?, incoming: TlsConfig): TlsConfig {
+        if (existing == null) return incoming
+        if (!incoming.echEnabled || incoming.echConfigPem.isNotBlank() || existing.echConfigPem.isBlank()) {
+            return incoming
+        }
+        return incoming.copy(
+            echConfigSource = incoming.echConfigSource.ifBlank { existing.echConfigSource },
+            echDohUrl = incoming.echDohUrl.ifBlank { existing.echDohUrl },
+            echConfigPem = existing.echConfigPem
         )
     }
 }

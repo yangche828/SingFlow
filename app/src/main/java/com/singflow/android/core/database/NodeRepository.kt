@@ -82,12 +82,32 @@ class NodeRepository(
             if (existing == null) {
                 nodeDao.upsert(incoming)
             } else {
-                nodeDao.update(NodeMerge.preserve(existing, incoming))
+                val merged = NodeMerge.preserve(existing, incoming)
+                nodeDao.update(merged.copy(tlsJson = preserveEch(existing.tlsJson, merged.tlsJson)))
             }
             written++
         }
         return written
     }
+
+    /**
+     * 刷新时保留已有 ECH config。
+     *
+     * 订阅刷新会重新做 DoH 查询，若本次查询失败（PEM 为空），
+     * 不能让空值覆盖上一次成功的结果，否则 ECH 会被静默关闭、SNI 重新暴露。
+     */
+    private fun preserveEch(existingJson: String, incomingJson: String): String {
+        val incoming = decodeTls(incomingJson) ?: return incomingJson
+        val merged = NodeMerge.preserveEch(decodeTls(existingJson), incoming)
+        return if (merged == incoming) incomingJson else encodeTls(merged)
+    }
+
+    /** 安全解码 TLS 配置（历史脏数据回退为 null，由调用方决定降级策略）。 */
+    private fun decodeTls(jsonText: String): TlsConfig? =
+        runCatching { json.decodeFromString(TlsConfig.serializer(), jsonText) }.getOrNull()
+
+    /** 编码 TLS 配置。 */
+    private fun encodeTls(tls: TlsConfig): String = json.encodeToString(TlsConfig.serializer(), tls)
 
     /** 更新节点（健康度、国家、收藏等整体写回）。 */
     suspend fun update(node: ProxyNode) {

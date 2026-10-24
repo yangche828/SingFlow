@@ -98,11 +98,13 @@ class SubscriptionManager(
             }
 
             val existing = nodeStore.getByGroup(entity.id)
-            val diff = SubscriptionNodeDiffCalculator.diff(existing, parsed.nodes)
+            // 补齐 ECH config（与手动导入共用缓存；失败保持空 PEM，配置层降级明文 SNI）。
+            val nodes = importManager.resolveEchConfigs(parsed.nodes)
+            val diff = SubscriptionNodeDiffCalculator.diff(existing, nodes)
             if (diff.removed.isNotEmpty()) {
                 nodeStore.deleteAll(diff.removed.map { it.id })
             }
-            nodeStore.saveAllPreservingStats(parsed.nodes)
+            nodeStore.saveAllPreservingStats(nodes)
 
             val now = System.currentTimeMillis()
             val updated = entity.copy(
@@ -120,7 +122,7 @@ class SubscriptionManager(
                 success = true,
                 message = "订阅已更新：新增 ${diff.added.size} 个、保留 ${diff.retained.size} 个" +
                     if (diff.removed.isEmpty()) "" else "、移除 ${diff.removed.size} 个失效节点",
-                imported = parsed.nodes.size,
+                imported = nodes.size,
                 removed = diff.removed.size,
                 subscription = updated
             )

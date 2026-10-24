@@ -262,6 +262,7 @@ class UniversalParserTest {
         val result = UniversalImportManager().parseText("$link\n$link")
 
         assertEquals(1, result.nodes.size)
+        assertEquals(1, result.saved)
     }
 
     @Test

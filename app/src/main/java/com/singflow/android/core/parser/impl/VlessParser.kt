@@ -31,6 +31,13 @@ class VlessParser : NodeLinkParser {
         val sni = parsed.param("sni", "serverName", "peer")
         val fingerprint = parsed.param("fp").ifBlank { "chrome" }
         val alpn = LinkParserUtils.parseAlpn(parsed.param("alpn"))
+        // ech 参数形如 "cloudflare-ech.com+https://dns.alidns.com/dns-query"：
+        // 加号前是 ECH config 来源域名，加号后是解析用 DoH；仅有域名时由
+        // EchConfigResolver 回退到境内可达的阿里 DoH（不是 Google DoH）。
+        val echParam = parsed.param("ech")
+        val echParts = echParam.split('+', limit = 2)
+        val echSource = echParts.getOrNull(0)?.trim().orEmpty()
+        val echDoh = echParts.getOrNull(1)?.trim().orEmpty()
 
         val tls = TlsConfig(
             enabled = tlsEnabled,
@@ -41,7 +48,10 @@ class VlessParser : NodeLinkParser {
             realityEnabled = reality,
             realityPublicKey = parsed.param("pbk"),
             realityShortId = parsed.param("sid"),
-            realitySpiderX = parsed.param("spx")
+            realitySpiderX = parsed.param("spx"),
+            echEnabled = echSource.isNotBlank(),
+            echConfigSource = echSource,
+            echDohUrl = echDoh
         )
 
         val transport = when (transportType) {

@@ -193,7 +193,11 @@ class MainViewModel @Inject constructor(
             _importing.value = false
             if (result.nodes.isNotEmpty()) {
                 preferencesManager.setSelectedNode(result.nodes.first().id)
-                val summary = "成功导入 ${result.nodes.size} 个节点"
+                val summary = if (result.saved > 0) {
+                    "成功导入 ${result.saved} 个节点"
+                } else {
+                    "节点已存在，已刷新 ${result.nodes.size} 个存量节点"
+                }
                 _importMessage.value = summary
                 _message.value = summary
                 if (autoConnectContext != null) {
